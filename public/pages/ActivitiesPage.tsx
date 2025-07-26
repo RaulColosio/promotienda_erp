@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCrm, formatDate, addWorkingDays } from '../store/crmStore';
-import { Task, User } from '../types';
+import { Task } from '../types';
 import { Link } from 'react-router-dom';
-import { ClipboardListIcon, CheckCircleIcon, CircleIcon, CalendarIcon, TrashIcon, UsersIcon, PlusIcon, EditIcon, XIcon } from '../components/Icons';
+import { ClipboardListIcon, CheckCircleIcon, CircleIcon, CalendarIcon, TrashIcon, UsersIcon, EditIcon, XIcon, ChevronDownIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import RobustDatePicker from '../components/RobustDatePicker';
 import GlobalSearch from '../components/GlobalSearch';
@@ -13,10 +12,12 @@ import AddEditTaskModal from '../components/AddEditTaskModal';
 const FollowUpTaskModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onAddTask: (title: string, dueDate: string, dealId?: string) => void;
+    onAddTask: (title: string, dueDate: string, dealId?: string, responsibleUserId?: string) => void;
     onUndo: () => void;
     dealId?: string;
-}> = ({ isOpen, onClose, onAddTask, onUndo, dealId }) => {
+    defaultResponsibleUserId?: string;
+}> = ({ isOpen, onClose, onAddTask, onUndo, dealId, defaultResponsibleUserId }) => {
+    const { users } = useCrm();
     const getISODateString = (date: Date) => date.toISOString().split('T')[0];
 
     const todayStr = getISODateString(new Date());
@@ -27,17 +28,19 @@ const FollowUpTaskModal: React.FC<{
 
     const [title, setTitle] = useState("Seguimiento");
     const [dueDate, setDueDate] = useState(twoDaysWorking);
+    const [responsibleUserId, setResponsibleUserId] = useState(defaultResponsibleUserId || '');
     
     React.useEffect(() => {
         if (isOpen) {
             setTitle("Seguimiento");
             setDueDate(twoDaysWorking);
+            setResponsibleUserId(defaultResponsibleUserId || '');
         }
-    }, [isOpen, twoDaysWorking]);
+    }, [isOpen, twoDaysWorking, defaultResponsibleUserId]);
 
     const handleSubmit = () => {
         if (!title.trim()) return;
-        onAddTask(title, dueDate, dealId);
+        onAddTask(title, dueDate, dealId, responsibleUserId);
         // The calling component handles closing on success
     };
     
@@ -82,6 +85,20 @@ const FollowUpTaskModal: React.FC<{
                         )}
                     </div>
                 </div>
+                 <div>
+                    <label htmlFor="followup-user" className="block text-sm font-medium text-slate-700">Assign to</label>
+                    <select
+                        id="followup-user"
+                        value={responsibleUserId}
+                        onChange={e => setResponsibleUserId(e.target.value)}
+                        className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">Unassigned</option>
+                        {users.map(user => (
+                            <option key={user.id} value={user.id}>{user.name}</option>
+                        ))}
+                    </select>
+                </div>
                 <div className="flex justify-between items-center pt-4">
                     <button onClick={handleUndo} className="px-4 py-2 text-sm font-medium text-slate-700 rounded-md hover:bg-slate-100">Undo</button>
                     <div className="flex gap-2">
@@ -96,25 +113,39 @@ const FollowUpTaskModal: React.FC<{
 
 
 const ActivitiesPage: React.FC = () => {
-    const { users, getAllPendingTasks, updateTask, deleteTask, getDealById, addTask, getUserById, deleteTasks, completeTasks, showConfirmation, showAlert } = useCrm();
+    const { currentUser, users, getAllPendingTasks, updateTask, deleteTask, getDealById, addTask, getUserById, deleteTasks, completeTasks, showConfirmation, showAlert } = useCrm();
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
     const [completedTask, setCompletedTask] = useState<Task | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
-    const [filterByUserId, setFilterByUserId] = useState('all');
+    const [activeTabUserId, setActiveTabUserId] = useState(currentUser?.id || 'all');
+    const [isCreatorCollapsed, setIsCreatorCollapsed] = useState(true);
     
     const pendingTasks = getAllPendingTasks();
+
+    const sortedUsers = useMemo(() => {
+        if (!currentUser) return users;
+        const currentUserInList = users.find(u => u.id === currentUser.id);
+        if (!currentUserInList) return users;
+
+        const otherUsers = users.filter(u => u.id !== currentUser.id);
+        return [currentUserInList, ...otherUsers];
+    }, [users, currentUser]);
     
     const filteredTasks = useMemo(() => {
-        if (filterByUserId === 'all') {
+        if (activeTabUserId === 'all') {
             return pendingTasks;
         }
-        if (filterByUserId === 'unassigned') {
+        if (activeTabUserId === 'unassigned') {
             return pendingTasks.filter(t => !t.responsibleUserId);
         }
-        return pendingTasks.filter(t => t.responsibleUserId === filterByUserId);
-    }, [pendingTasks, filterByUserId]);
+        return pendingTasks.filter(t => t.responsibleUserId === activeTabUserId);
+    }, [pendingTasks, activeTabUserId]);
+
+    useEffect(() => {
+        setSelectedTaskIds(new Set());
+    }, [activeTabUserId]);
 
 
     const handleToggleComplete = (task: Task) => {
@@ -135,9 +166,9 @@ const ActivitiesPage: React.FC = () => {
         }
     };
 
-    const handleAddFollowUpTask = async (title: string, dueDate: string, dealId?: string) => {
+    const handleAddFollowUpTask = async (title: string, dueDate: string, dealId?: string, responsibleUserId?: string) => {
         try {
-            await addTask({ dealId, title, dueDate });
+            await addTask({ dealId, title, dueDate, responsibleUserId });
             setShowFollowUpModal(false);
         } catch (error) {
             console.error("Failed to add follow-up task:", error);
@@ -201,6 +232,19 @@ const ActivitiesPage: React.FC = () => {
             () => deleteTask(taskId)
         );
     }
+    
+    const TabButton = ({ isActive, onClick, children }: { isActive: boolean, onClick: () => void, children: React.ReactNode }) => (
+        <button
+            onClick={onClick}
+            className={`whitespace-nowrap px-4 py-3 text-sm font-semibold rounded-t-lg border-b-2 transition-colors ${
+                isActive 
+                ? 'text-blue-600 border-blue-600' 
+                : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
+            }`}
+        >
+            {children}
+        </button>
+    );
 
     return (
         <div className="flex flex-col h-[calc(100vh)] p-8">
@@ -211,6 +255,7 @@ const ActivitiesPage: React.FC = () => {
                     onAddTask={handleAddFollowUpTask}
                     onUndo={handleUndoComplete}
                     dealId={completedTask.dealId}
+                    defaultResponsibleUserId={completedTask.responsibleUserId}
                 />
             )}
             <AddEditTaskModal 
@@ -221,27 +266,36 @@ const ActivitiesPage: React.FC = () => {
             <div className="flex-shrink-0 pb-6 space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-3xl font-bold text-slate-800">Tareas</h2>
-                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="user-filter" className="text-sm font-medium text-slate-600">Filter by user:</label>
-                            <select
-                                id="user-filter"
-                                value={filterByUserId}
-                                onChange={(e) => setFilterByUserId(e.target.value)}
-                                 className="block w-full min-w-[180px] px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            >
-                                <option value="all">All Users</option>
-                                <option value="unassigned">Unassigned</option>
-                                {users.map(user => (
-                                    <option key={user.id} value={user.id}>{user.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
                 </div>
                 <GlobalSearch />
-                <TaskCreator showUserAssignment={true}/>
+                <div className="bg-white shadow rounded-lg">
+                    <button
+                        onClick={() => setIsCreatorCollapsed(!isCreatorCollapsed)}
+                        className="w-full flex justify-between items-center p-4 text-left text-lg font-semibold text-slate-700"
+                        aria-expanded={!isCreatorCollapsed}
+                    >
+                        <span>Añadir nueva tarea</span>
+                        <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${isCreatorCollapsed ? 'rotate-180' : ''}`} />
+                    </button>
+                    {!isCreatorCollapsed && (
+                        <div className="p-4 border-t border-slate-200">
+                            <TaskCreator showUserAssignment={true} className="bg-transparent border-none p-0 shadow-none" />
+                        </div>
+                    )}
+                </div>
             </div>
+
+            <div className="border-b border-slate-200 mb-4">
+                <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
+                    <TabButton isActive={activeTabUserId === 'all'} onClick={() => setActiveTabUserId('all')}>Todos</TabButton>
+                    {sortedUsers.map(user => (
+                        <TabButton key={user.id} isActive={activeTabUserId === user.id} onClick={() => setActiveTabUserId(user.id)}>
+                            {user.name}
+                        </TabButton>
+                    ))}
+                </nav>
+            </div>
+
             <div className="flex-grow overflow-auto">
                  {selectedTaskIds.size > 0 && (
                     <div className="bg-blue-100 border border-blue-200 rounded-lg p-3 flex justify-between items-center mb-4">

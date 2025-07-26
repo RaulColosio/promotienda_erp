@@ -2,13 +2,27 @@
 
 import React, { useState, useMemo } from 'react';
 import { useCrm } from '../store/crmStore';
-import { Deal, Contact } from '../types';
-import { CloudIcon, EditIcon, LinkIcon } from './Icons';
+import { Deal } from '../types';
+import { CloudIcon, LinkIcon } from './Icons';
 import ManageCloudLinkModal from './ManageCloudLinkModal';
 
 interface CloudSectionProps {
     deal: Deal;
 }
+
+const formatGdriveUrl = (url: string): string => {
+    try {
+        const decodedUrl = decodeURIComponent(url);
+        const parts = decodedUrl.split('/Mi unidad/');
+        if (parts.length > 1) {
+            return parts[1].replace(/\//g, ' / ');
+        }
+        return url; // Fallback to original URL if pattern not found
+    } catch (e) {
+        // In case of a malformed URI
+        return url;
+    }
+};
 
 const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
     const { getContactById } = useCrm();
@@ -27,6 +41,11 @@ const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
         if (primaryContact?.googleDriveFolderUrl) return `Contact (${primaryContact.firstName})`;
         return null;
     }, [deal, primaryContact]);
+
+    const displayPath = useMemo(() => {
+        if (!effectiveUrl) return '';
+        return formatGdriveUrl(effectiveUrl);
+    }, [effectiveUrl]);
 
     return (
         <>
@@ -52,7 +71,7 @@ const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
                             className="flex items-center gap-2 text-blue-600 font-medium break-all hover:underline"
                         >
                             <LinkIcon className="w-4 h-4 flex-shrink-0" />
-                            <span>{effectiveUrl}</span>
+                            <span>{displayPath}</span>
                         </a>
                         {urlSource && <p className="text-xs text-slate-400">Source: {urlSource}</p>}
                     </div>

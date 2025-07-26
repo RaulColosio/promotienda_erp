@@ -15,6 +15,7 @@
     "firebase/app": "10.12.2",
     "firebase/auth": "10.12.2",
     "firebase/firestore": "10.12.2",
+    "firebase/storage": "10.12.2",
     "firebase": "^12.0.0"
   },
   "devDependencies": {

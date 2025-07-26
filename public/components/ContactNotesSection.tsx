@@ -1,39 +1,31 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCrm, formatDate } from '../store/crmStore';
 import { ContactNote, Attachment, User } from '../types';
 import RichTextEditor from './RichTextEditor';
 import { PlusIcon, EditIcon, TrashIcon, MessageSquareIcon, FileTextIcon, DownloadIcon, XIcon, ThumbsUpIcon } from './Icons';
 
-// Helper function to handle file downloads
-const handleDownload = (data: string, name: string) => {
-    const link = document.createElement("a");
-    link.href = data;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-// Helper to convert a file to a Base64 string for storage
-const fileToBase64 = (fileToConvert: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(fileToConvert);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-};
-
-
 // Sub-component for displaying a single Contact Note
 const ContactNoteItem: React.FC<{note: ContactNote}> = ({ note }) => {
     const { users, currentUser, updateContactNote, deleteContactNote, showConfirmation, toggleContactNoteLike, getUserById } = useCrm();
     const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState(note.content);
+    const [editedContent, setEditedContent] = useState('');
+    const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>([]);
+    const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
+    const [removedAttachments, setRemovedAttachments] = useState<Attachment[]>([]);
+    
+    useEffect(() => {
+        if (isEditing) {
+            setEditedContent(note.content);
+            setCurrentAttachments(note.attachments || []);
+            setNewAttachmentFiles([]);
+            setRemovedAttachments([]);
+        }
+    }, [isEditing, note.content, note.attachments]);
 
     const handleUpdateNote = () => {
-        // Note: editing attachments is not supported in this view for simplicity.
-        updateContactNote({ ...note, content: editedContent });
+        const { attachments, ...restOfNote } = note;
+        updateContactNote({ ...restOfNote, content: editedContent }, newAttachmentFiles, removedAttachments);
         setIsEditing(false);
     };
 
@@ -53,6 +45,20 @@ const ContactNoteItem: React.FC<{note: ContactNote}> = ({ note }) => {
         return "Liked by: " + note.likes.map(id => getUserById(id)?.name || 'a user').join(', ');
     }, [note.likes, getUserById]);
 
+    const handleEditFilesDrop = (files: File[]) => {
+        setNewAttachmentFiles(prev => [...prev, ...files]);
+    };
+    
+    const handleRemoveCurrentAttachment = (attachment: Attachment) => {
+        setCurrentAttachments(prev => prev.filter(a => a.id !== attachment.id));
+        setRemovedAttachments(prev => [...prev, attachment]);
+    };
+    
+    const handleRemoveNewAttachment = (fileName: string) => {
+        setNewAttachmentFiles(prev => prev.filter(f => f.name !== fileName));
+    };
+
+
     return (
         <div className="relative pl-8 group">
             <div className="absolute top-0 left-0 h-full border-l-2 border-slate-200">
@@ -68,7 +74,37 @@ const ContactNoteItem: React.FC<{note: ContactNote}> = ({ note }) => {
                             onChange={setEditedContent}
                             placeholder="Edit your note..."
                             users={users}
+                            onFilesDrop={handleEditFilesDrop}
                         />
+                        {(currentAttachments.length > 0 || newAttachmentFiles.length > 0) && (
+                            <div className="space-y-2 p-2 border rounded-md bg-slate-50">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase">Attachments</h4>
+                                {currentAttachments.map(att => (
+                                    <div key={att.id} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <FileTextIcon className="w-4 h-4 text-slate-400" />
+                                            <span>{att.name}</span>
+                                            <span className="text-xs text-slate-500">({(att.size / 1024).toFixed(1)} KB)</span>
+                                        </div>
+                                        <button onClick={() => handleRemoveCurrentAttachment(att)} className="text-red-500 hover:text-red-700">
+                                            <XIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {newAttachmentFiles.map(file => (
+                                    <div key={file.name} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 text-blue-700">
+                                            <FileTextIcon className="w-4 h-4 text-blue-400" />
+                                            <span>{file.name}</span>
+                                            <span className="text-xs text-blue-500">(new)</span>
+                                        </div>
+                                        <button onClick={() => handleRemoveNewAttachment(file.name)} className="text-red-500 hover:text-red-700">
+                                            <XIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex justify-end space-x-2">
                             <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200">Cancel</button>
                             <button onClick={handleUpdateNote} className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Save</button>
@@ -87,15 +123,17 @@ const ContactNoteItem: React.FC<{note: ContactNote}> = ({ note }) => {
                             {note.attachments && note.attachments.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                                     {note.attachments.map((att, index) => (
-                                        <button 
+                                        <a 
                                             key={index} 
-                                            onClick={() => handleDownload(att.data, att.name)} 
+                                            href={att.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 font-medium group"
                                         >
                                             <FileTextIcon className="w-4 h-4 text-slate-400 group-hover:text-blue-500"/>
                                             <span>{att.name}</span>
                                             <DownloadIcon className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100"/>
-                                        </button>
+                                        </a>
                                     ))}
                                 </div>
                             )}
@@ -128,41 +166,30 @@ const ContactNotesSection: React.FC<{ contactId: string }> = ({ contactId }) => 
     const notes = getNotesForContact(contactId);
 
     const [newNoteContent, setNewNoteContent] = useState('');
-    const [newNoteAttachments, setNewNoteAttachments] = useState<Attachment[]>([]);
+    const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleFilesDrop = async (files: File[]) => {
-        const fileToAttachment = async (file: File): Promise<Attachment> => {
-            const data = await fileToBase64(file);
-            return {
-                id: `${file.name}-${Date.now()}`, // temp id
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                data: data,
-            };
-        };
-        const newAttachments = await Promise.all(files.map(fileToAttachment));
-        setNewNoteAttachments(prev => [...prev, ...newAttachments]);
+    const handleFilesDrop = (files: File[]) => {
+        setNewNoteFiles(prev => [...prev, ...files]);
     };
     
-    const handleRemoveAttachment = (attachmentId: string) => {
-        setNewNoteAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    const handleRemoveAttachment = (fileName: string) => {
+        setNewNoteFiles(prev => prev.filter(f => f.name !== fileName));
     };
 
     const handleAddNote = async () => {
         const hasText = newNoteContent.replace(/<[^>]*>/g, '').trim().length > 0;
         const hasMentions = /data-mention="true"/.test(newNoteContent);
         
-        if (!hasText && !hasMentions && newNoteAttachments.length === 0) {
+        if (!hasText && !hasMentions && newNoteFiles.length === 0) {
             return; // Note is empty, do nothing
         }
-
+        
         setIsSubmitting(true);
         try {
-            await addContactNote({ contactId, content: newNoteContent, attachments: newNoteAttachments });
+            await addContactNote({ contactId, content: newNoteContent }, newNoteFiles);
             setNewNoteContent('');
-            setNewNoteAttachments([]);
+            setNewNoteFiles([]);
         } catch (error) {
             console.error("Error creating note for contact:", error);
             alert("Could not save note. Please try again.");
@@ -185,17 +212,17 @@ const ContactNotesSection: React.FC<{ contactId: string }> = ({ contactId }) => 
                     onFilesDrop={handleFilesDrop}
                     users={users}
                 />
-                {newNoteAttachments.length > 0 && (
+                 {newNoteFiles.length > 0 && (
                     <div className="space-y-2 p-2 border rounded-md bg-slate-50">
                         <h4 className="text-xs font-bold text-slate-500 uppercase">Attachments</h4>
-                        {newNoteAttachments.map(att => (
-                            <div key={att.id} className="flex items-center justify-between text-sm">
+                        {newNoteFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-slate-700">
                                     <FileTextIcon className="w-4 h-4 text-slate-400" />
-                                    <span>{att.name}</span>
-                                    <span className="text-xs text-slate-500">({(att.size / 1024).toFixed(1)} KB)</span>
+                                    <span>{file.name}</span>
+                                    <span className="text-xs text-slate-500">({(file.size / 1024).toFixed(1)} KB)</span>
                                 </div>
-                                <button onClick={() => handleRemoveAttachment(att.id)} className="text-red-500 hover:text-red-700">
+                                <button onClick={() => handleRemoveAttachment(file.name)} className="text-red-500 hover:text-red-700">
                                     <XIcon className="w-4 h-4" />
                                 </button>
                             </div>

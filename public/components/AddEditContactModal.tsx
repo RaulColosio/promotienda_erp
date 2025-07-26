@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCrm } from '../store/crmStore';
-import { Contact } from '../types';
+import { Contact, ContactTag } from '../types';
 import Modal from './Modal';
-import { TrashIcon, LinkIcon } from './Icons';
+import { TrashIcon, LinkIcon, XIcon } from './Icons';
 
 const countryCodes = [
     { name: 'Mexico', code: '+52' },
@@ -14,7 +14,7 @@ const AddEditContactModal: React.FC<{
     onClose: () => void; 
     contactToEdit?: Contact | null; 
 }> = ({ isOpen, onClose, contactToEdit }) => {
-    const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady } = useCrm();
+    const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -22,8 +22,8 @@ const AddEditContactModal: React.FC<{
     const [countryCode, setCountryCode] = useState('+52');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [company, setCompany] = useState('');
-    const [zipCode, setZipCode] = useState('');
     const [googleDriveFolderUrl, setGoogleDriveFolderUrl] = useState('');
+    const [contactTagIds, setContactTagIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (contactToEdit) {
@@ -32,8 +32,8 @@ const AddEditContactModal: React.FC<{
             setEmail(contactToEdit.email);
             setEmail2(contactToEdit.email2 || '');
             setCompany(contactToEdit.company);
-            setZipCode(contactToEdit.zipCode);
             setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
+            setContactTagIds(contactToEdit.contactTagIds || []);
 
             const phoneStr = contactToEdit.phone || '';
             let found = false;
@@ -59,8 +59,8 @@ const AddEditContactModal: React.FC<{
             setCountryCode('+52');
             setPhoneNumber('');
             setCompany('');
-            setZipCode('');
             setGoogleDriveFolderUrl('');
+            setContactTagIds([]);
         }
     }, [contactToEdit, isOpen]);
 
@@ -73,7 +73,6 @@ const AddEditContactModal: React.FC<{
         const sanitizedEmail2 = email2.replace(/\s/g, '');
         const sanitizedPhoneNumber = phoneNumber.replace(/\s/g, '');
         const sanitizedCompany = company.trim();
-        const sanitizedZipCode = zipCode.trim();
         const sanitizedGoogleDriveUrl = googleDriveFolderUrl.trim();
         
         if (!sanitizedFirstName && !sanitizedLastName && !sanitizedEmail && !sanitizedPhoneNumber && !sanitizedCompany) {
@@ -88,8 +87,8 @@ const AddEditContactModal: React.FC<{
             email2: sanitizedEmail2,
             phone: `${countryCode}${sanitizedPhoneNumber}`,
             company: sanitizedCompany,
-            zipCode: sanitizedZipCode,
             googleDriveFolderUrl: sanitizedGoogleDriveUrl,
+            contactTagIds,
         };
 
         onClose();
@@ -130,6 +129,27 @@ const AddEditContactModal: React.FC<{
             alert("Could not open Google Drive picker. Please ensure you are connected in Settings.");
         }
     };
+    
+    const assignedTags = useMemo(() => 
+        contactTagIds.map(id => contactTags.find(t => t.id === id)).filter(Boolean) as ContactTag[],
+        [contactTagIds, contactTags]
+    );
+
+    const availableTags = useMemo(() =>
+        contactTags.filter(t => !contactTagIds.includes(t.id)),
+        [contactTagIds, contactTags]
+    );
+
+    const handleAddTag = (tagId: string) => {
+        if (tagId && !contactTagIds.includes(tagId)) {
+            setContactTagIds(prev => [...prev, tagId]);
+        }
+    };
+
+    const handleRemoveTag = (tagId: string) => {
+        setContactTagIds(prev => prev.filter(id => id !== tagId));
+    };
+
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={contactToEdit ? 'Edit Contact' : 'Add New Contact'}>
@@ -144,13 +164,15 @@ const AddEditContactModal: React.FC<{
                         <input type="text" id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                 </div>
-                 <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
-                    <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                </div>
-                <div>
-                    <label htmlFor="email2" className="block text-sm font-medium text-slate-700">Secondary Email (Optional)</label>
-                    <input type="email" id="email2" value={email2} onChange={e => setEmail2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+                        <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label htmlFor="email2" className="block text-sm font-medium text-slate-700">Secondary Email (Optional)</label>
+                        <input type="email" id="email2" value={email2} onChange={e => setEmail2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
                 </div>
                  <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-slate-700">Phone</label>
@@ -179,26 +201,50 @@ const AddEditContactModal: React.FC<{
                         <input type="text" id="company" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                     <div>
-                        <label htmlFor="zipCode" className="block text-sm font-medium text-slate-700">Zip Code</label>
-                        <input type="text" id="zipCode" value={zipCode} onChange={e => setZipCode(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                        <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
+                        <div className="mt-1 flex gap-2">
+                            <input type="url" id="googleDriveUrl" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                            <button
+                                type="button"
+                                onClick={handleSelectFolder}
+                                disabled={!isGoogleDriveConnected || !googleApiReady}
+                                title={!isGoogleDriveConnected ? "Connect to Google Drive in Settings first" : "Select Folder from Google Drive"}
+                                className="flex-shrink-0 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                            >
+                                <LinkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
                     </div>
                 </div>
+                
                 <div>
-                    <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
-                    <div className="mt-1 flex gap-2">
-                        <input type="url" id="googleDriveUrl" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                        <button
-                            type="button"
-                            onClick={handleSelectFolder}
-                            disabled={!isGoogleDriveConnected || !googleApiReady}
-                            title={!isGoogleDriveConnected ? "Connect to Google Drive in Settings first" : "Select Folder from Google Drive"}
-                            className="flex-shrink-0 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                    <label className="block text-sm font-medium text-slate-700">Contact Tags</label>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 p-2 border border-slate-300 rounded-md bg-white">
+                        {assignedTags.map(tag => (
+                            <span key={tag.id} className={`text-xs font-semibold text-white px-2 py-1 rounded-full flex items-center ${tag.color}`}>
+                                {tag.name}
+                                <button type="button" onClick={() => handleRemoveTag(tag.id)} className="ml-1.5 -mr-0.5 text-white/70 hover:text-white">
+                                    <XIcon className="w-3 h-3"/>
+                                </button>
+                            </span>
+                        ))}
+                        <select
+                            onChange={(e) => {
+                                handleAddTag(e.target.value);
+                                e.target.value = '';
+                            }}
+                            value=""
+                            className="flex-grow bg-transparent border-none focus:ring-0 text-sm p-0 min-w-[120px]"
                         >
-                            <LinkIcon className="w-5 h-5" />
-                        </button>
+                            <option value="">Add a tag...</option>
+                            {availableTags.map(tag => (
+                                <option key={tag.id} value={tag.id}>{tag.name}</option>
+                            ))}
+                        </select>
                     </div>
-                    {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
                 </div>
+
                 <div className="flex justify-between items-center pt-4">
                     <div>
                         {contactToEdit && (

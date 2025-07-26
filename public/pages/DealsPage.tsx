@@ -1,33 +1,34 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
-import { Deal, DealStage, Contact } from '../types';
+import { Deal, Contact, PipelineStage } from '../types';
 import { PlusIcon, UsersIcon, ChevronLeftIcon, ChevronDownIcon, CalendarIcon } from '../components/Icons';
 import ProductionTypeModal from '../components/ProductionTypeModal';
 import GlobalSearch from '../components/GlobalSearch';
 import SetDeliveryDateModal from '../components/SetDeliveryDateModal';
 
-const STAGE_COLORS: Record<DealStage, string> = {
-  [DealStage.NEW]: 'border-t-slate-400',
-  [DealStage.CONTACTED]: 'border-t-blue-400',
-  [DealStage.REVIEW]: 'border-t-yellow-400',
-  [DealStage.APPROVED]: 'border-t-cyan-400',
-  [DealStage.MATERIAL_PURCHASE]: 'border-t-orange-400',
-  [DealStage.IN_TRANSIT]: 'border-t-lime-400',
-  [DealStage.PRODUCTION]: 'border-t-indigo-400',
-  [DealStage.EXTERNAL_WORKSHOP]: 'border-t-violet-400',
-  [DealStage.READY_LOCAL]: 'border-t-purple-400',
-  [DealStage.AWAITING_PAYMENT]: 'border-t-pink-400',
-  [DealStage.READY_FOR_DELIVERY]: 'border-t-teal-400',
-  [DealStage.WON]: 'border-t-green-400',
-  [DealStage.LOST]: 'border-t-red-400 bg-slate-900',
+const STAGE_COLORS: Record<string, string> = {
+  'Nuevos': 'border-t-slate-400',
+  'Contactados': 'border-t-blue-400',
+  'En revisión': 'border-t-yellow-400',
+  'Aprobado': 'border-t-cyan-400',
+  'Compra de material': 'border-t-orange-400',
+  'En camino': 'border-t-lime-400',
+  'Producción': 'border-t-indigo-400',
+  'Taller externo': 'border-t-violet-400',
+  'Listo en local': 'border-t-purple-400',
+  'Espera de pago': 'border-t-pink-400',
+  'Listo para entrega': 'border-t-teal-400',
+  'Ganado': 'border-t-green-400',
+  'Perdido': 'border-t-red-400 bg-slate-900',
 };
 
 const DealCard: React.FC<{
   deal: Deal,
+  stageName: string,
   isReorderEnabled: boolean;
   onReorder: (draggedId: string, targetId: string) => void;
-}> = ({ deal, isReorderEnabled, onReorder }) => {
+}> = ({ deal, stageName, isReorderEnabled, onReorder }) => {
   const { getContactById, getUserById } = useCrm();
   const navigate = useNavigate();
   const [isOver, setIsOver] = useState(false);
@@ -37,7 +38,7 @@ const DealCard: React.FC<{
   const today = new Date();
   today.setHours(0,0,0,0);
   const deliveryDate = deal.deliveryDate ? new Date(deal.deliveryDate + 'T00:00:00') : null;
-  const isOverdue = deliveryDate && deliveryDate < today && deal.stage !== DealStage.WON && deal.stage !== DealStage.LOST;
+  const isOverdue = deliveryDate && deliveryDate < today && stageName !== 'Ganado' && stageName !== 'Perdido';
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('dealId', deal.id);
@@ -76,12 +77,12 @@ const DealCard: React.FC<{
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`bg-white p-4 rounded-lg shadow-sm mb-3 cursor-pointer active:cursor-grabbing border-t-4 ${STAGE_COLORS[deal.stage]} ${isOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+      className={`bg-white p-4 rounded-lg shadow-sm mb-3 cursor-pointer active:cursor-grabbing border-t-4 ${STAGE_COLORS[stageName] || 'border-t-gray-400'} ${isOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
     >
-      <h4 className={`font-bold ${deal.stage === DealStage.LOST ? 'text-slate-400' : 'text-slate-800'}`}>{deal.title}</h4>
+      <h4 className={`font-bold ${stageName === 'Perdido' ? 'text-slate-400' : 'text-slate-800'}`}>{deal.title}</h4>
       <div className="mt-2 space-y-2">
         {primaryContact && (
-            <p className={`text-sm flex items-center ${deal.stage === DealStage.LOST ? 'text-slate-500' : 'text-slate-600'}`}>
+            <p className={`text-sm flex items-center ${stageName === 'Perdido' ? 'text-slate-500' : 'text-slate-600'}`}>
             <UsersIcon className="w-4 h-4 mr-2 text-slate-400"/>
             {primaryContact.firstName} {primaryContact.lastName}
             {deal.contactIds.length > 1 && ` +${deal.contactIds.length - 1}`}
@@ -107,9 +108,9 @@ const DealCard: React.FC<{
 };
 
 const KanbanColumn: React.FC<{ 
-    stage: DealStage; 
+    stage: PipelineStage; 
     deals: Deal[];
-    onDropDeal: (dealId: string, newStage: DealStage) => void;
+    onDropDeal: (dealId: string, newStageId: string) => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     isReorderEnabled: boolean;
@@ -128,7 +129,7 @@ const KanbanColumn: React.FC<{
     e.preventDefault();
     const dealId = e.dataTransfer.getData('dealId');
     if (dealId) {
-        onDropDeal(dealId, stage);
+        onDropDeal(dealId, stage.id);
     }
     setIsOver(false);
   };
@@ -142,7 +143,7 @@ const KanbanColumn: React.FC<{
         >
           <div className="flex flex-col items-center space-y-4">
             <h3 style={{ writingMode: 'vertical-rl' }} className="transform rotate-180 font-semibold text-slate-700 whitespace-nowrap select-none">
-              {stage}
+              {stage.name}
             </h3>
             <span className="text-sm bg-slate-200 text-slate-600 font-medium px-2 py-1 rounded-full">{deals.length}</span>
           </div>
@@ -153,7 +154,7 @@ const KanbanColumn: React.FC<{
     return (
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <button onClick={onToggleCollapse} className="flex items-center gap-2 text-slate-700 font-semibold hover:text-blue-600 w-full text-left truncate">
-            {stage}
+            {stage.name}
             <ChevronDownIcon className="w-4 h-4 transition-transform duration-200" />
         </button>
         <span className="text-sm bg-slate-200 text-slate-600 font-medium px-2 py-1 rounded-full">{deals.length}</span>
@@ -170,7 +171,7 @@ const KanbanColumn: React.FC<{
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onDragLeave={handleDragLeave}
-          className={`rounded-lg p-2 h-full flex flex-col transition-colors ${isOver ? 'bg-slate-200' : 'bg-transparent'} ${stage === DealStage.LOST ? 'bg-black/5' : ''}`}
+          className={`rounded-lg p-2 h-full flex flex-col transition-colors ${isOver ? 'bg-slate-200' : 'bg-transparent'} ${stage.name === 'Perdido' ? 'bg-black/5' : ''}`}
         >
           <ColumnHeader />
           {!isCollapsed && (
@@ -179,6 +180,7 @@ const KanbanColumn: React.FC<{
                 <DealCard
                     key={deal.id}
                     deal={deal}
+                    stageName={stage.name}
                     isReorderEnabled={isReorderEnabled}
                     onReorder={onReorder}
                 />
@@ -193,15 +195,22 @@ const KanbanColumn: React.FC<{
 type SortKey = 'createdAt-asc' | 'createdAt-desc' | 'deliveryDate-asc' | 'deliveryDate-desc' | 'manual';
 
 const DealsPage: React.FC = () => {
-  const { deals, updateDeal, getDealById, reorderDeal, showAddDeal } = useCrm();
+  const { deals, updateDeal, getDealById, reorderDeal, showAddDeal, pipelineStages, getStageById } = useCrm();
   const [productionModalDeal, setProductionModalDeal] = useState<Deal | null>(null);
   const [isDeliveryDateModalOpen, setIsDeliveryDateModalOpen] = useState(false);
   const [dealIdForDeliveryDateModal, setDealIdForDeliveryDateModal] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('createdAt-desc');
-  const [collapsedStages, setCollapsedStages] = useState<Set<DealStage>>(new Set());
-  const stages = Object.values(DealStage);
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   
   const dealForDeliveryDateModal = dealIdForDeliveryDateModal ? getDealById(dealIdForDeliveryDateModal) : null;
+  
+  useEffect(() => {
+    // Initialize collapsed stages once pipeline stages are loaded
+    if (pipelineStages.length > 0) {
+        const wonLostStages = pipelineStages.filter(s => s.name === 'Ganado' || s.name === 'Perdido').map(s => s.id);
+        setCollapsedStages(new Set(wonLostStages));
+    }
+  }, [pipelineStages]);
 
   const sortedDeals = useMemo(() => {
     const dealsToSort = [...deals];
@@ -221,29 +230,32 @@ const DealsPage: React.FC = () => {
     });
   }, [deals, sortBy]);
 
-  const handleDropDeal = (dealId: string, newStage: DealStage) => {
+  const handleDropDeal = (dealId: string, newStageId: string) => {
     const deal = getDealById(dealId);
-    if (!deal || deal.stage === newStage) return;
+    if (!deal || deal.stageId === newStageId) return;
 
-    if (newStage === DealStage.PRODUCTION && deal.stage !== DealStage.PRODUCTION) {
+    const newStage = getStageById(newStageId);
+    if (!newStage) return;
+
+    if (newStage.name === 'Producción') {
         setProductionModalDeal(deal);
     } else {
-        updateDeal(dealId, () => ({ stage: newStage }));
+        updateDeal(dealId, () => ({ stageId: newStageId }));
     }
     
-    if (newStage === DealStage.MATERIAL_PURCHASE && deal.stage !== DealStage.MATERIAL_PURCHASE) {
+    if (newStage.name === 'Compra de material') {
         setDealIdForDeliveryDateModal(dealId);
         setIsDeliveryDateModalOpen(true);
     }
   };
 
-  const toggleCollapse = (stage: DealStage) => {
+  const toggleCollapse = (stageId: string) => {
     setCollapsedStages(prev => {
         const newSet = new Set(prev);
-        if (newSet.has(stage)) {
-            newSet.delete(stage);
+        if (newSet.has(stageId)) {
+            newSet.delete(stageId);
         } else {
-            newSet.add(stage);
+            newSet.add(stageId);
         }
         return newSet;
     });
@@ -255,10 +267,13 @@ const DealsPage: React.FC = () => {
           isOpen={!!productionModalDeal}
           onClose={() => setProductionModalDeal(null)}
           onConfirm={(tagIds) => {
-              updateDeal(productionModalDeal.id, () => ({
-                  stage: DealStage.PRODUCTION,
-                  tagIds,
-              }));
+              const productionStage = pipelineStages.find(s => s.name === 'Producción');
+              if (productionStage) {
+                  updateDeal(productionModalDeal.id, () => ({
+                      stageId: productionStage.id,
+                      tagIds,
+                  }));
+              }
               setProductionModalDeal(null);
           }}
           deal={productionModalDeal}
@@ -303,14 +318,14 @@ const DealsPage: React.FC = () => {
       </header>
       <div className="flex-1 overflow-x-auto px-8 pb-4">
         <div className="inline-flex space-x-4 h-full">
-          {stages.map(stage => (
+          {pipelineStages.map(stage => (
             <KanbanColumn
-              key={stage}
+              key={stage.id}
               stage={stage}
-              deals={sortedDeals.filter(deal => deal.stage === stage)}
+              deals={sortedDeals.filter(deal => deal.stageId === stage.id)}
               onDropDeal={handleDropDeal}
-              isCollapsed={collapsedStages.has(stage)}
-              onToggleCollapse={() => toggleCollapse(stage)}
+              isCollapsed={collapsedStages.has(stage.id)}
+              onToggleCollapse={() => toggleCollapse(stage.id)}
               isReorderEnabled={sortBy === 'manual'}
               onReorder={reorderDeal}
             />

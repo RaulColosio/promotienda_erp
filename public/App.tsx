@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CrmProvider, useCrm } from './store/crmStore';
 import { Contact } from './types';
@@ -18,7 +16,7 @@ import AddEditContactModal from './components/AddEditContactModal';
 import AddDealModal from './components/AddDealModal';
 import AlertModal from './components/AlertModal';
 import NotificationCenter from './components/NotificationCenter';
-import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
+import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, DollarSignIcon, PaintBrushIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -53,11 +51,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
       <nav className={`p-4 space-y-2 overflow-y-auto flex-grow ${isCollapsed ? 'px-2' : 'px-4'}`}>
         <NavLink to="/deals" className={navLinkClasses} title="Ventas">
-          <LayersIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
+          <DollarSignIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
           {!isCollapsed && <span className="truncate">Ventas</span>}
         </NavLink>
         <NavLink to="/production" className={navLinkClasses} title="Producción">
-          <TagIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
+          <PaintBrushIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
           {!isCollapsed && <span className="truncate">Producción</span>}
         </NavLink>
         
@@ -200,6 +198,62 @@ const NotificationHandler: React.FC = () => {
   return null; // This component does not render anything visible
 };
 
+// NotificationController component to manage sounds and native notifications reliably
+const NotificationController: React.FC = () => {
+  const { notifications, loading } = useCrm();
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const hasInitialized = useRef(false);
+  const previousNotificationIds = useRef<Set<string>>(new Set());
+  const isForeground = useRef(true);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isForeground.current = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const currentIds = new Set(notifications.map(n => n.id));
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      previousNotificationIds.current = currentIds;
+      return;
+    }
+
+    const newNotifications = notifications.filter(n => !previousNotificationIds.current.has(n.id));
+
+    if (newNotifications.length > 0) {
+      const latestNotification = newNotifications[0]; // Assuming notifications are sorted descending by date
+      if (isForeground.current) {
+        // Play sound directly if the app is in the foreground
+        audioRef.current?.play().catch(e => console.warn("Audio play failed:", e));
+      } else {
+        // Show a native notification if the app is in the background
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const notification = new Notification('New Message', {
+            body: latestNotification.message,
+            icon: '/vite.svg', // Optional: Add an icon URL
+            silent: false, // Ensure sound plays if the OS allows
+          });
+          notification.onclick = () => {
+             // Focus the window and navigate when the notification is clicked
+             window.focus();
+          };
+        }
+      }
+    }
+
+    previousNotificationIds.current = currentIds;
+  }, [notifications, loading]);
+
+  // The audio element is now part of this controller
+  return <audio ref={audioRef} id="notification-sound" src="https://cdn.pixabay.com/download/audio/2023/09/24/audio_3108132791.mp3" preload="auto"></audio>;
+};
+
 const App: React.FC = () => {
   const [confirmation, setConfirmation] = useState<{ isOpen: boolean; message: string; onConfirm: () => void | Promise<void>; } | null>(null);
   const [contactDetail, setContactDetail] = useState<{ isOpen: boolean; contactId: string | null }>({ isOpen: false, contactId: null });
@@ -236,6 +290,7 @@ const App: React.FC = () => {
         showAlert={showAlert}
       >
         <NotificationHandler />
+        <NotificationController />
         <AppRoutes />
         
         <ConfirmationModal

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useCrm, formatDate } from '../store/crmStore';
-import { Contact, Deal, Task, Note, Attachment, DealStage, Tag, User } from '../types';
+import { useCrm, formatDate, addWorkingDays } from '../store/crmStore';
+import { Contact, Deal, Task, Note, Attachment, Tag, User, PipelineStage } from '../types';
 import Modal from '../components/Modal';
 import { 
     ChevronLeftIcon, UsersIcon, MailIcon, WhatsappIcon, 
@@ -19,6 +19,7 @@ import SetDeliveryDateModal from '../components/SetDeliveryDateModal';
 import CloudSection from '../components/CloudSection';
 import DeliverySection from '../components/DeliverySection';
 import ActivitySection from '../components/ActivitySection';
+import MessageTemplateSelectorModal from '../components/MessageTemplateSelectorModal';
 
 const EditDealModal: React.FC<{ isOpen: boolean; onClose: () => void; deal: Deal }> = ({ isOpen, onClose, deal }) => {
     const { updateDeal, deleteDeal, showConfirmation, users } = useCrm();
@@ -26,13 +27,24 @@ const EditDealModal: React.FC<{ isOpen: boolean; onClose: () => void; deal: Deal
     const [deliveryDate, setDeliveryDate] = useState(deal.deliveryDate || '');
     const [assignedUserId, setAssignedUserId] = useState(deal.assignedUserId || '');
 
+    const oneWeekFromNow = useMemo(() => {
+        const d = addWorkingDays(new Date(), 5); // 5 working days for a week
+        return d.toISOString().split('T')[0];
+    }, []);
+
+    const tenDaysFromNow = useMemo(() => {
+        const d = addWorkingDays(new Date(), 10);
+        return d.toISOString().split('T')[0];
+    }, []);
+
     useEffect(() => {
-        if(deal) {
+        if(deal && isOpen) {
             setTitle(deal.title);
-            setDeliveryDate(deal.deliveryDate ? deal.deliveryDate.split('T')[0] : '');
+            const initialDate = deal.deliveryDate ? deal.deliveryDate.split('T')[0] : oneWeekFromNow;
+            setDeliveryDate(initialDate);
             setAssignedUserId(deal.assignedUserId || '');
         }
-    }, [deal, isOpen]);
+    }, [deal, isOpen, oneWeekFromNow]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,11 +64,20 @@ const EditDealModal: React.FC<{ isOpen: boolean; onClose: () => void; deal: Deal
             () => {
                 deleteDeal(deal.id);
                 onClose();
-                // Navigate back to deals list after deletion.
-                // This is handled by the DealDetailPage component which will no longer find the deal.
             }
         );
     };
+    
+    const getButtonClass = (isActive: boolean) =>
+    `px-3 py-2 rounded-md text-sm font-semibold transition-colors border ${
+        isActive
+            ? 'bg-blue-600 text-white border-blue-700'
+            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+    }`;
+    
+    const isOneWeek = deliveryDate === oneWeekFromNow;
+    const isTenDays = deliveryDate === tenDaysFromNow;
+    const isCustomDate = !!deliveryDate && !isOneWeek && !isTenDays;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Edit Deal">
@@ -66,15 +87,20 @@ const EditDealModal: React.FC<{ isOpen: boolean; onClose: () => void; deal: Deal
                     <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">Delivery Date</label>
-                    <RobustDatePicker value={deliveryDate} onChange={setDeliveryDate}>
-                         <div className="mt-1 flex items-center justify-between px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-left cursor-pointer">
-                            <span className={deliveryDate ? 'text-slate-800' : 'text-slate-400'}>
-                                {deliveryDate ? formatDate(deliveryDate) : 'Select a date'}
-                            </span>
-                            <CalendarIcon className="h-5 w-5 text-slate-400" />
-                        </div>
-                    </RobustDatePicker>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Delivery Date</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button type="button" onClick={() => setDeliveryDate(oneWeekFromNow)} className={getButtonClass(isOneWeek)}>1 Semana</button>
+                        <button type="button" onClick={() => setDeliveryDate(tenDaysFromNow)} className={getButtonClass(isTenDays)}>10 días</button>
+                        <RobustDatePicker value={deliveryDate} onChange={setDeliveryDate}>
+                            <div className={getButtonClass(isCustomDate)}>
+                                <div className="flex items-center gap-2">
+                                    <CalendarIcon className={`w-4 h-4 ${!isCustomDate ? 'text-slate-500' : ''}`} />
+                                    <span>Elegir fecha</span>
+                                </div>
+                            </div>
+                        </RobustDatePicker>
+                        {deliveryDate && <p className="text-sm text-slate-500 ml-2">Seleccionada: {formatDate(deliveryDate)}</p>}
+                    </div>
                 </div>
                  <div>
                     <label htmlFor="assignedUser" className="block text-sm font-medium text-slate-700">Assigned To</label>
@@ -104,22 +130,22 @@ const EditDealModal: React.FC<{ isOpen: boolean; onClose: () => void; deal: Deal
     );
 };
 
-const PipelineStepper: React.FC<{ deal: Deal; onStageChange: (newStage: DealStage) => void }> = ({ deal, onStageChange }) => {
-    const stages = Object.values(DealStage);
+const PipelineStepper: React.FC<{ deal: Deal; onStageChange: (newStageId: string) => void }> = ({ deal, onStageChange }) => {
+    const { pipelineStages } = useCrm();
     
     return (
         <div className="flex flex-wrap items-center gap-2">
-            {stages.map((stage) => (
+            {pipelineStages.map((stage) => (
                 <button
-                    key={stage}
-                    onClick={() => onStageChange(stage)}
+                    key={stage.id}
+                    onClick={() => onStageChange(stage.id)}
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                        deal.stage === stage
+                        deal.stageId === stage.id
                             ? 'bg-blue-600 text-white shadow'
                             : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                     }`}
                 >
-                    {stage}
+                    {stage.name}
                 </button>
             ))}
         </div>
@@ -127,11 +153,18 @@ const PipelineStepper: React.FC<{ deal: Deal; onStageChange: (newStage: DealStag
 };
 
 const ContactsSection: React.FC<{deal: Deal}> = ({ deal }) => {
-    const { getContactById } = useCrm();
+    const { getContactById, showContactDetail } = useCrm();
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [selectedContactForMsg, setSelectedContactForMsg] = useState<Contact | null>(null);
 
     const assignedContacts = useMemo(() => deal.contactIds.map(id => getContactById(id)).filter(c => c !== undefined) as Contact[], [deal.contactIds, getContactById]);
     
+    const handleWhatsAppClick = (contact: Contact) => {
+        setSelectedContactForMsg(contact);
+        setIsTemplateModalOpen(true);
+    };
+
     const CopyButton: React.FC<{ textToCopy: string | undefined }> = ({ textToCopy }) => {
         const [copied, setCopied] = useState(false);
     
@@ -161,6 +194,7 @@ const ContactsSection: React.FC<{deal: Deal}> = ({ deal }) => {
     return (
         <>
         <ManageDealContactsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} deal={deal} />
+        {selectedContactForMsg && <MessageTemplateSelectorModal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} contact={selectedContactForMsg} />}
 
         <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
@@ -180,14 +214,14 @@ const ContactsSection: React.FC<{deal: Deal}> = ({ deal }) => {
                              <div className="flex-grow p-4 bg-slate-50 rounded-lg space-y-2">
                                 <div className="flex items-center gap-3">
                                     <CopyButton textToCopy={`${contact.firstName} ${contact.lastName}`} />
-                                    <p className="font-bold text-slate-900">{contact.firstName} {contact.lastName}</p>
+                                    <button onClick={() => showContactDetail(contact.id)} className="font-bold text-slate-900 hover:text-blue-600 hover:underline text-left">{contact.firstName} {contact.lastName}</button>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <CopyButton textToCopy={contact.company} />
                                     <p className="text-sm text-slate-600">{contact.company}</p>
                                 </div>
                                 <div className="flex items-center gap-3 border-t pt-2 mt-2">
-                                    <CopyButton textToCopy={contact.phone} />
+                                    <CopyButton textToCopy={formatDisplayPhone(contact.phone)} />
                                     <p className="text-sm text-slate-600">{formatDisplayPhone(contact.phone)}</p>
                                 </div>
                                 {contact.email && (
@@ -206,15 +240,13 @@ const ContactsSection: React.FC<{deal: Deal}> = ({ deal }) => {
                                 >
                                     <MailIcon className="w-5 h-5"/>
                                 </a>
-                                <a 
-                                    href={`https://web.whatsapp.com/send?phone=${contact.phone.replace(/\D/g, '')}`}
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
+                                <button 
+                                    onClick={() => handleWhatsAppClick(contact)}
                                     className="w-10 h-10 flex items-center justify-center bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
                                     title={`WhatsApp ${contact.phone}`}
                                 >
                                     <WhatsappIcon className="w-5 h-5"/>
-                                </a>
+                                </button>
                             </div>
                         </div>
                     ))
@@ -230,34 +262,34 @@ const ContactsSection: React.FC<{deal: Deal}> = ({ deal }) => {
 const FollowUpTaskModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onAddTask: (title: string, dueDate: string) => void;
+    onAddTask: (title: string, dueDate: string, responsibleUserId?: string) => void;
     onUndo: () => void;
-}> = ({ isOpen, onClose, onAddTask, onUndo }) => {
-    const defaultTitle = "Seguimiento";
+    defaultResponsibleUserId?: string;
+}> = ({ isOpen, onClose, onAddTask, onUndo, defaultResponsibleUserId }) => {
+    const { users } = useCrm();
     const getISODateString = (date: Date) => date.toISOString().split('T')[0];
-
-    const twoDaysFromNow = new Date();
-    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-    const defaultDueDate = getISODateString(twoDaysFromNow);
-
-    const [title, setTitle] = useState(defaultTitle);
-    const [dueDate, setDueDate] = useState(defaultDueDate);
 
     const todayStr = getISODateString(new Date());
     const tomorrowDate = new Date();
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const tomorrowStr = getISODateString(tomorrowDate);
+    const twoDaysWorking = getISODateString(addWorkingDays(new Date(), 2));
+
+    const [title, setTitle] = useState("Seguimiento");
+    const [dueDate, setDueDate] = useState(twoDaysWorking);
+    const [responsibleUserId, setResponsibleUserId] = useState(defaultResponsibleUserId || '');
 
     useEffect(() => {
         if (isOpen) {
-            setTitle(defaultTitle);
-            setDueDate(defaultDueDate);
+            setTitle("Seguimiento");
+            setDueDate(twoDaysWorking);
+            setResponsibleUserId(defaultResponsibleUserId || '');
         }
-    }, [isOpen, defaultDueDate]);
+    }, [isOpen, defaultResponsibleUserId, twoDaysWorking]);
 
     const handleSubmit = () => {
         if (!title.trim()) return;
-        onAddTask(title, dueDate);
+        onAddTask(title, dueDate, responsibleUserId);
         onClose();
     };
 
@@ -286,8 +318,9 @@ const FollowUpTaskModal: React.FC<{
                     <div className="flex items-center gap-2 flex-wrap">
                         <button type="button" onClick={() => setDueDate(todayStr)} className={getButtonClass(dueDate === todayStr)}>Hoy</button>
                         <button type="button" onClick={() => setDueDate(tomorrowStr)} className={getButtonClass(dueDate === tomorrowStr)}>Mañana</button>
+                        <button type="button" onClick={() => setDueDate(twoDaysWorking)} className={getButtonClass(dueDate === twoDaysWorking)}>En 2 días</button>
                         <RobustDatePicker value={dueDate} onChange={setDueDate}>
-                            <div className={getButtonClass(!!dueDate && dueDate !== todayStr && dueDate !== tomorrowStr)}>
+                            <div className={getButtonClass(!!dueDate && dueDate !== todayStr && dueDate !== tomorrowStr && dueDate !== twoDaysWorking)}>
                                 <CalendarIcon className="w-4 h-4" />
                             </div>
                         </RobustDatePicker>
@@ -300,6 +333,19 @@ const FollowUpTaskModal: React.FC<{
                             </div>
                         )}
                     </div>
+                </div>
+                <div>
+                    <label htmlFor="followup-user" className="block text-sm font-medium text-slate-700">Assign to</label>
+                    <select
+                        id="followup-user"
+                        value={responsibleUserId}
+                        onChange={e => setResponsibleUserId(e.target.value)}
+                        className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        {users.map(user => (
+                            <option key={user.id} value={user.id}>{user.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="flex justify-between items-center pt-4">
                     <button onClick={handleUndo} className="px-4 py-2 text-sm font-medium text-slate-700 rounded-md hover:bg-slate-100">Undo</button>
@@ -323,8 +369,8 @@ const TasksSection: React.FC<{dealId: string}> = ({ dealId }) => {
     const tasks = getTasksForDeal(dealId);
     const deal = getDealById(dealId);
     
-    const handleAddFollowUpTask = (title: string, dueDate: string) => {
-        addTask({ dealId, title, dueDate });
+    const handleAddFollowUpTask = (title: string, dueDate: string, responsibleUserId?: string) => {
+        addTask({ dealId, title, dueDate, responsibleUserId });
     };
 
     const handleUndoComplete = () => {
@@ -361,6 +407,7 @@ const TasksSection: React.FC<{dealId: string}> = ({ dealId }) => {
                 onClose={() => setShowFollowUpModal(false)}
                 onAddTask={handleAddFollowUpTask}
                 onUndo={handleUndoComplete}
+                defaultResponsibleUserId={completedTask?.responsibleUserId}
             />
             <AddEditTaskModal 
                 isOpen={isEditModalOpen} 
@@ -514,7 +561,7 @@ const TagsSection: React.FC<{deal: Deal}> = ({deal}) => {
 const DealDetailPage: React.FC = () => {
     const { dealId } = useParams<{ dealId: string }>();
     const navigate = useNavigate();
-    const { getDealById, updateDeal, restoreDeal, deals, getUserById } = useCrm();
+    const { getDealById, updateDeal, restoreDeal, deals, getUserById, getStageById, pipelineStages } = useCrm();
     
     const [isEditDealModalOpen, setIsEditDealModalOpen] = useState(false);
     const [productionModalDeal, setProductionModalDeal] = useState<Deal | null>(null);
@@ -549,19 +596,19 @@ const DealDetailPage: React.FC = () => {
         );
     }
     
-    const handleStageChange = (newStage: DealStage) => {
-        if (isArchived) return;
-        const originalStage = deal.stage;
+    const handleStageChange = (newStageId: string) => {
+        if (isArchived || deal.stageId === newStageId) return;
+        
+        const newStage = getStageById(newStageId);
+        if (!newStage) return;
 
-        if (originalStage === newStage) return;
-
-        if (newStage === DealStage.PRODUCTION && originalStage !== DealStage.PRODUCTION) {
+        if (newStage.name === 'Producción') {
             setProductionModalDeal(deal);
         } else {
-            updateDeal(deal.id, (prevDeal) => ({ ...prevDeal, stage: newStage }));
+            updateDeal(deal.id, (prevDeal) => ({ ...prevDeal, stageId: newStageId }));
         }
         
-        if (newStage === DealStage.MATERIAL_PURCHASE && originalStage !== DealStage.MATERIAL_PURCHASE) {
+        if (newStage.name === 'Compra de material') {
             setIsDeliveryDateModalOpen(true);
         }
     };
@@ -574,10 +621,13 @@ const DealDetailPage: React.FC = () => {
                     isOpen={!!productionModalDeal}
                     onClose={() => setProductionModalDeal(null)}
                     onConfirm={(tagIds) => {
-                        updateDeal(productionModalDeal.id, () => ({
-                            stage: DealStage.PRODUCTION,
-                            tagIds,
-                        }));
+                        const productionStage = pipelineStages.find(s => s.name === 'Producción');
+                        if (productionStage) {
+                            updateDeal(productionModalDeal.id, () => ({
+                                stageId: productionStage.id,
+                                tagIds,
+                            }));
+                        }
                         setProductionModalDeal(null);
                     }}
                     deal={productionModalDeal}

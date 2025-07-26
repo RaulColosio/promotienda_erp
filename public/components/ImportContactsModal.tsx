@@ -13,7 +13,6 @@ const MAPPING_SUGGESTIONS: { [key: string]: CrmContactField } = {
   'email 2': 'email2', 'secondary email': 'email2', 'email secundario': 'email2',
   'phone': 'phone', 'phone number': 'phone', 'teléfono': 'phone', 'telefono': 'phone', 'móvil': 'phone', 'movil': 'phone',
   'company': 'company', 'empresa': 'company', 'organización': 'company',
-  'zip code': 'zipCode', 'zip': 'zipCode', 'postal code': 'zipCode', 'código postal': 'zipCode', 'cp': 'zipCode',
   'drive url': 'googleDriveFolderUrl', 'google drive': 'googleDriveFolderUrl', 'folder url': 'googleDriveFolderUrl',
 };
 
@@ -29,7 +28,6 @@ const CRM_FIELDS: { key: CrmContactField; label: string }[] = [
     { key: 'email2', label: 'Secondary Email' },
     { key: 'phone', label: 'Phone' },
     { key: 'company', label: 'Company' },
-    { key: 'zipCode', label: 'Zip Code' },
     { key: 'googleDriveFolderUrl', label: 'Google Drive URL' },
 ];
 
