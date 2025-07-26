@@ -1,8 +1,8 @@
 
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage, Attachment } from '../types';
-import { auth, db, storage, googleAuthProvider } from '../firebase';
+import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage } from '../types';
+import { auth, db, googleAuthProvider } from '../firebase';
 import firebase from 'firebase/compat/app';
 
 const permanentUser: User = {
@@ -108,12 +108,12 @@ interface CrmContextType {
   deleteTasks: (ids: string[]) => Promise<void>;
   completeTasks: (ids: string[]) => Promise<void>;
   getNotesForDeal: (dealId: string) => Note[];
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'attachments'>, attachments: File[]) => Promise<void>;
-  updateNote: (note: Omit<Note, 'attachments'>, newAttachments: File[], removedAttachments: Attachment[]) => Promise<void>;
+  addNote: (note: Omit<Note, 'id' | 'createdAt'>) => Promise<void>;
+  updateNote: (note: Note) => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
   getNotesForContact: (contactId: string) => ContactNote[];
-  addContactNote: (note: Omit<ContactNote, 'id' | 'createdAt' | 'attachments'>, attachments: File[]) => Promise<void>;
-  updateContactNote: (note: Omit<ContactNote, 'attachments'>, newAttachments: File[], removedAttachments: Attachment[]) => Promise<void>;
+  addContactNote: (note: Omit<ContactNote, 'id' | 'createdAt'>) => Promise<void>;
+  updateContactNote: (note: ContactNote) => Promise<void>;
   deleteContactNote: (noteId: string) => Promise<void>;
   getUsers: () => User[];
   getUserById: (id: string) => User | undefined;
@@ -178,41 +178,6 @@ interface CrmContextType {
 const CrmContext = createContext<CrmContextType | undefined>(undefined);
 
 const mapDocToData = <T extends {id: string}>(doc: any): T => ({ ...doc.data(), id: doc.id } as T);
-
-// --- ATTACHMENT HELPERS ---
-const uploadAttachment = async (file: File, contextId: string): Promise<Attachment> => {
-    const storagePath = `attachments/${contextId}/${Date.now()}_${file.name}`;
-    const storageRef = storage.ref(storagePath);
-    const snapshot = await storageRef.put(file);
-    const url = await snapshot.ref.getDownloadURL();
-    return {
-        id: snapshot.ref.name, // Use the file name in storage as a unique ID
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url,
-        storagePath,
-    };
-};
-
-const deleteAttachment = async (attachment: Attachment) => {
-    try {
-        await storage.ref(attachment.storagePath).delete();
-    } catch (error: any) {
-        // It's common for this to fail if the file doesn't exist (e.g., already deleted).
-        // We can safely ignore these "object-not-found" errors.
-        if (error.code !== 'storage/object-not-found') {
-            console.error("Failed to delete attachment from storage:", error);
-            // Optionally re-throw or handle the error if it's not a 'not found' error.
-        }
-    }
-};
-
-const deleteAttachments = async (attachments: Attachment[]) => {
-    if (!attachments || attachments.length === 0) return;
-    await Promise.all(attachments.map(att => deleteAttachment(att)));
-};
-
 
 export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType, 'showConfirmation' | 'showContactDetail' | 'showAddEditContact' | 'showAddDeal' | 'showAlert'>> = ({ 
     children, 
@@ -899,14 +864,13 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
     const addedTagIds = [...finalTagIds].filter(id => !(deal.tagIds || []).includes(id));
     if (addedTagIds.length > 0) {
         const raul = users.find(u => u.name === 'Raúl Colosio');
-        const produccionUser = users.find(u => u.email === 'produccion.promotienda@gmail.com');
-        const impresionUser = users.find(u => u.email === 'impresion@promotienda.mx');
+        const produccionUser = users.find(u => u.name.toLowerCase() === 'producción');
         const addedTagsInfo = tags.filter(t => addedTagIds.includes(t.id));
 
         for (const addedTag of addedTagsInfo) {
             if (addedTag.name.toLowerCase() === 'serigrafía') {
                 if (raul) await addTask({ title: 'Preparar positivo', dealId: deal.id, responsibleUserId: raul.id, dueDate: today });
-                if (impresionUser) await addTask({ title: 'Impresión de serigrafía', dealId: deal.id, responsibleUserId: impresionUser.id, dueDate: today });
+                if (produccionUser) await addTask({ title: 'Impresión de serigrafía', dealId: deal.id, responsibleUserId: produccionUser.id, dueDate: today });
             }
             if (addedTag.name.toLowerCase() === 'dtf textil') {
                 if (raul) await addTask({ title: 'Enviar diseño a impresión', dealId: deal.id, responsibleUserId: raul.id, dueDate: today });
@@ -980,20 +944,12 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
       await batch.commit();
   };
 
-  const deleteNoteAndAssociatedData = async (noteId: string, noteCollection: 'notes' | 'contactNotes') => {
-    const noteRef = db.collection(noteCollection).doc(noteId);
-    const noteDoc = await noteRef.get();
-    if (!noteDoc.exists) return;
-    const noteData = mapDocToData<Note | ContactNote>(noteDoc);
-
+  const deleteNoteAndAssociatedNotifications = async (noteId: string, noteCollection: 'notes' | 'contactNotes') => {
     const batch = db.batch();
-    // 1. Delete associated attachments from Storage
-    if (noteData.attachments) {
-        await deleteAttachments(noteData.attachments);
-    }
-    // 2. Delete the note itself
+    // 1. Delete the note itself
+    const noteRef = db.collection(noteCollection).doc(noteId);
     batch.delete(noteRef);
-    // 3. Find and delete associated notifications
+    // 2. Find and delete associated notifications
     const notifsQuery = await db.collection('notifications').where('sourceNoteId', '==', noteId).get();
     notifsQuery.docs.forEach(doc => {
         batch.delete(doc.ref);
@@ -1001,50 +957,37 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
     await batch.commit();
   };
 
-  const addNote = async (note: Omit<Note, 'id' | 'createdAt' | 'attachments'>, files: File[]) => {
-    const uploadedAttachments = await Promise.all(files.map(file => uploadAttachment(file, note.dealId)));
-    const newNoteRef = await add("notes", {...note, attachments: uploadedAttachments, createdAt: new Date().toISOString()});
+  const addNote = async (note: Omit<Note, 'id' | 'createdAt'>) => {
+    const newNoteRef = await add("notes", {...note, createdAt: new Date().toISOString()});
     if (currentUser) {
       await syncNotificationsForNote(note.content, `/deals/${note.dealId}`, newNoteRef.id, currentUser);
     }
   };
-  const updateNote = async (note: Omit<Note, 'attachments'>, newFiles: File[], removedAttachments: Attachment[]) => {
-    await deleteAttachments(removedAttachments);
-    const newUploadedAttachments = await Promise.all(newFiles.map(file => uploadAttachment(file, note.dealId)));
-    
-    const originalNote = notes.find(n => n.id === note.id);
-    const originalAttachments = originalNote?.attachments || [];
-    const finalAttachments = [...originalAttachments.filter(att => !removedAttachments.some(rem => rem.id === att.id)), ...newUploadedAttachments];
-
-    await update("notes", note.id, {...note, attachments: finalAttachments});
+  const updateNote = async (note: Note) => {
+    await update("notes", note.id, note);
     if (currentUser) {
       await syncNotificationsForNote(note.content, `/deals/${note.dealId}`, note.id, currentUser);
     }
   };
-  const deleteNote = (noteId: string) => deleteNoteAndAssociatedData(noteId, 'notes');
+  const deleteNote = async (noteId: string) => {
+    await deleteNoteAndAssociatedNotifications(noteId, 'notes');
+  };
 
-  const addContactNote = async (note: Omit<ContactNote, 'id' | 'createdAt' | 'attachments'>, files: File[]) => {
-    const uploadedAttachments = await Promise.all(files.map(file => uploadAttachment(file, note.contactId)));
-    const newNoteRef = await add("contactNotes", {...note, attachments: uploadedAttachments, createdAt: new Date().toISOString()});
+  const addContactNote = async (note: Omit<ContactNote, 'id' | 'createdAt'>) => {
+    const newNoteRef = await add("contactNotes", {...note, createdAt: new Date().toISOString()});
     if (currentUser) {
       await syncNotificationsForNote(note.content, `/contacts?contactId=${note.contactId}`, newNoteRef.id, currentUser);
     }
   };
-  const updateContactNote = async (note: Omit<ContactNote, 'attachments'>, newFiles: File[], removedAttachments: Attachment[]) => {
-    await deleteAttachments(removedAttachments);
-    const newUploadedAttachments = await Promise.all(newFiles.map(file => uploadAttachment(file, note.contactId)));
-    
-    const originalNote = contactNotes.find(n => n.id === note.id);
-    const originalAttachments = originalNote?.attachments || [];
-    const finalAttachments = [...originalAttachments.filter(att => !removedAttachments.some(rem => rem.id === att.id)), ...newUploadedAttachments];
-    
-    await update("contactNotes", note.id, {...note, attachments: finalAttachments});
+  const updateContactNote = async (note: ContactNote) => {
+    await update("contactNotes", note.id, note);
     if (currentUser) {
       await syncNotificationsForNote(note.content, `/contacts?contactId=${note.contactId}`, note.id, currentUser);
     }
   };
-  const deleteContactNote = (noteId: string) => deleteNoteAndAssociatedData(noteId, 'contactNotes');
-
+  const deleteContactNote = async (noteId: string) => {
+    await deleteNoteAndAssociatedNotifications(noteId, 'contactNotes');
+  };
 
   const addUser = async (user: Omit<User, 'id' | 'sortIndex'>) => { 
       const highestSortIndex = users.reduce((max, u) => Math.max(max, u.sortIndex || 0), 0);

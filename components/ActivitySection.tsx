@@ -1,5 +1,14 @@
 
-import React, { useState, useMemo, useRef, FormEvent, DragEvent, useEffect } from 'react';
+
+
+
+
+
+
+
+
+
+import React, { useState, useMemo, useRef, FormEvent, DragEvent } from 'react';
 import { useCrm, formatDate } from '../store/crmStore';
 import { Note, Quote, Attachment, User } from '../types';
 import RichTextEditor from './RichTextEditor';
@@ -11,27 +20,44 @@ import {
 
 type TimelineItem = (Note & { type: 'note' }) | (Quote & { type: 'quote' });
 
+const handleAttachmentClick = (attachment: { data: string, name: string, type: string }) => {
+    const isViewable = attachment.type.startsWith('image/') || attachment.type === 'application/pdf';
+
+    if (isViewable) {
+        try {
+            const byteCharacters = atob(attachment.data.substring(attachment.data.indexOf(',') + 1));
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: attachment.type });
+            const fileURL = URL.createObjectURL(blob);
+            window.open(fileURL, '_blank');
+        } catch (error) {
+            console.error("Failed to open file in new tab:", error);
+            alert("Could not open file. It may be corrupted or an unsupported format.");
+        }
+    } else {
+        // Fallback to download for other file types
+        const link = document.createElement("a");
+        link.href = attachment.data;
+        link.download = attachment.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+};
+
 // Sub-component for displaying a single Note
 const NoteItem: React.FC<{note: Note}> = ({ note }) => {
-    const { users, currentUser, updateNote, deleteNote, showConfirmation, toggleNoteLike, getUserById, showAlert } = useCrm();
+    const { users, currentUser, updateNote, deleteNote, showConfirmation, toggleNoteLike, getUserById } = useCrm();
     const [isEditing, setIsEditing] = useState(false);
-    const [editedContent, setEditedContent] = useState('');
-    const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>([]);
-    const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
-    const [removedAttachments, setRemovedAttachments] = useState<Attachment[]>([]);
-    
-    useEffect(() => {
-        if (isEditing) {
-            setEditedContent(note.content);
-            setCurrentAttachments(note.attachments || []);
-            setNewAttachmentFiles([]);
-            setRemovedAttachments([]);
-        }
-    }, [isEditing, note.content, note.attachments]);
+    const [editedContent, setEditedContent] = useState(note.content);
 
     const handleUpdateNote = () => {
-        const { attachments, ...restOfNote } = note;
-        updateNote({ ...restOfNote, content: editedContent }, newAttachmentFiles, removedAttachments);
+        // Note: editing attachments is not supported in this view for simplicity.
+        updateNote({ ...note, content: editedContent });
         setIsEditing(false);
     };
 
@@ -50,19 +76,6 @@ const NoteItem: React.FC<{note: Note}> = ({ note }) => {
         if (!note.likes || note.likes.length === 0) return "No one has liked this yet.";
         return "Liked by: " + note.likes.map(id => getUserById(id)?.name || 'a user').join(', ');
     }, [note.likes, getUserById]);
-    
-    const handleEditFilesDrop = (files: File[]) => {
-        setNewAttachmentFiles(prev => [...prev, ...files]);
-    };
-    
-    const handleRemoveCurrentAttachment = (attachment: Attachment) => {
-        setCurrentAttachments(prev => prev.filter(a => a.id !== attachment.id));
-        setRemovedAttachments(prev => [...prev, attachment]);
-    };
-
-    const handleRemoveNewAttachment = (fileName: string) => {
-        setNewAttachmentFiles(prev => prev.filter(f => f.name !== fileName));
-    };
 
 
     return (
@@ -80,37 +93,7 @@ const NoteItem: React.FC<{note: Note}> = ({ note }) => {
                             onChange={setEditedContent}
                             placeholder="Edit your note..."
                             users={users}
-                            onFilesDrop={handleEditFilesDrop}
                         />
-                         {(currentAttachments.length > 0 || newAttachmentFiles.length > 0) && (
-                            <div className="space-y-2 p-2 border rounded-md bg-slate-50">
-                                <h4 className="text-xs font-bold text-slate-500 uppercase">Attachments</h4>
-                                {currentAttachments.map(att => (
-                                    <div key={att.id} className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-slate-700">
-                                            <FileTextIcon className="w-4 h-4 text-slate-400" />
-                                            <span>{att.name}</span>
-                                            <span className="text-xs text-slate-500">({(att.size / 1024).toFixed(1)} KB)</span>
-                                        </div>
-                                        <button onClick={() => handleRemoveCurrentAttachment(att)} className="text-red-500 hover:text-red-700">
-                                            <XIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                                {newAttachmentFiles.map(file => (
-                                    <div key={file.name} className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2 text-blue-700">
-                                            <FileTextIcon className="w-4 h-4 text-blue-400" />
-                                            <span>{file.name}</span>
-                                            <span className="text-xs text-blue-500">(new)</span>
-                                        </div>
-                                        <button onClick={() => handleRemoveNewAttachment(file.name)} className="text-red-500 hover:text-red-700">
-                                            <XIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                         <div className="flex justify-end space-x-2">
                             <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200">Cancel</button>
                             <button onClick={handleUpdateNote} className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Save</button>
@@ -129,17 +112,15 @@ const NoteItem: React.FC<{note: Note}> = ({ note }) => {
                             {note.attachments && note.attachments.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                                     {note.attachments.map((att, index) => (
-                                        <a 
+                                        <button 
                                             key={index} 
-                                            href={att.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            onClick={() => handleAttachmentClick(att)}
                                             className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 font-medium group"
                                         >
                                             <FileTextIcon className="w-4 h-4 text-slate-400 group-hover:text-blue-500"/>
                                             <span>{att.name}</span>
                                             <DownloadIcon className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100"/>
-                                        </a>
+                                        </button>
                                     ))}
                                 </div>
                             )}
@@ -186,16 +167,6 @@ const QuoteItem: React.FC<{quote: Quote}> = ({ quote }) => {
     };
     
     const allDeliveryOptions: ('whatsapp' | 'email')[] = ['whatsapp', 'email'];
-
-    const handleAttachmentClick = (attachment: { data: string, name: string, type: string }) => {
-        // This is for Base64 data, might need adjustment if quotes also move to Storage
-        const link = document.createElement("a");
-        link.href = attachment.data;
-        link.download = attachment.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
 
     return (
          <div className="relative pl-8 group">
@@ -286,7 +257,7 @@ const ActivitySection: React.FC<{ dealId: string }> = ({ dealId }) => {
 
     // State for Note Creator
     const [newNoteContent, setNewNoteContent] = useState('');
-    const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
+    const [newNoteAttachments, setNewNoteAttachments] = useState<Attachment[]>([]);
     
     // State for Quote Creator
     const [quoteTitle, setQuoteTitle] = useState('');
@@ -308,27 +279,38 @@ const ActivitySection: React.FC<{ dealId: string }> = ({ dealId }) => {
         return combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [notes, quotes]);
     
-    const handleNoteFilesDrop = (files: File[]) => {
-        setNewNoteFiles(prev => [...prev, ...files]);
+    const handleNoteFilesDrop = async (files: File[]) => {
+        const fileToAttachment = async (file: File): Promise<Attachment> => {
+            const data = await fileToBase64(file);
+            return {
+                id: `${file.name}-${Date.now()}`, // temp id
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                data: data,
+            };
+        };
+        const newAttachments = await Promise.all(files.map(fileToAttachment));
+        setNewNoteAttachments(prev => [...prev, ...newAttachments]);
     };
     
-    const handleRemoveAttachment = (fileName: string) => {
-        setNewNoteFiles(prev => prev.filter(f => f.name !== fileName));
+    const handleRemoveAttachment = (attachmentId: string) => {
+        setNewNoteAttachments(prev => prev.filter(a => a.id !== attachmentId));
     };
 
     const handleAddNote = async () => {
         const hasText = newNoteContent.replace(/<[^>]*>/g, '').trim().length > 0;
         const hasMentions = /data-mention="true"/.test(newNoteContent);
         
-        if (!hasText && !hasMentions && newNoteFiles.length === 0) {
+        if (!hasText && !hasMentions && newNoteAttachments.length === 0) {
             return; // Note is empty, do nothing
         }
 
         setIsSubmitting(true);
         try {
-            await addNote({ dealId, content: newNoteContent }, newNoteFiles);
+            await addNote({ dealId, content: newNoteContent, attachments: newNoteAttachments });
             setNewNoteContent('');
-            setNewNoteFiles([]);
+            setNewNoteAttachments([]);
         } catch (error) {
             console.error("Error creating note:", error);
             alert("Could not save note. Please try again.");
@@ -438,17 +420,17 @@ const ActivitySection: React.FC<{ dealId: string }> = ({ dealId }) => {
                             onFilesDrop={handleNoteFilesDrop}
                             users={users}
                         />
-                         {newNoteFiles.length > 0 && (
+                         {newNoteAttachments.length > 0 && (
                             <div className="space-y-2 p-2 border rounded-md bg-slate-50">
                                 <h4 className="text-xs font-bold text-slate-500 uppercase">Attachments</h4>
-                                {newNoteFiles.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between text-sm">
+                                {newNoteAttachments.map(att => (
+                                    <div key={att.id} className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2 text-slate-700">
                                             <FileTextIcon className="w-4 h-4 text-slate-400" />
-                                            <span>{file.name}</span>
-                                            <span className="text-xs text-slate-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                                            <span>{att.name}</span>
+                                            <span className="text-xs text-slate-500">({(att.size / 1024).toFixed(1)} KB)</span>
                                         </div>
-                                        <button onClick={() => handleRemoveAttachment(file.name)} className="text-red-500 hover:text-red-700">
+                                        <button onClick={() => handleRemoveAttachment(att.id)} className="text-red-500 hover:text-red-700">
                                             <XIcon className="w-4 h-4" />
                                         </button>
                                     </div>

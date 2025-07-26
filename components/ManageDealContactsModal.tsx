@@ -26,6 +26,7 @@ const CreateContactForm: React.FC<{
     const [countryCode, setCountryCode] = useState('+52');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [company, setCompany] = useState('');
+    const [zipCode, setZipCode] = useState('');
     const [googleDriveFolderUrl, setGoogleDriveFolderUrl] = useState('');
     
     const resetForm = () => {
@@ -35,6 +36,7 @@ const CreateContactForm: React.FC<{
         setCountryCode('+52');
         setPhoneNumber('');
         setCompany('');
+        setZipCode('');
         setGoogleDriveFolderUrl('');
     }
 
@@ -47,6 +49,7 @@ const CreateContactForm: React.FC<{
         const sanitizedEmail = email.replace(/\s/g, '');
         const sanitizedPhoneNumber = phoneNumber.replace(/\s/g, '');
         const sanitizedCompany = company.trim();
+        const sanitizedZipCode = zipCode.trim();
         const sanitizedGoogleDriveUrl = googleDriveFolderUrl.trim();
 
         // Validate that at least one key field is filled
@@ -61,6 +64,7 @@ const CreateContactForm: React.FC<{
             email: sanitizedEmail,
             phone: `${countryCode}${sanitizedPhoneNumber}`,
             company: sanitizedCompany,
+            zipCode: sanitizedZipCode,
             googleDriveFolderUrl: sanitizedGoogleDriveUrl,
         };
         
@@ -108,9 +112,15 @@ const CreateContactForm: React.FC<{
                         />
                     </div>
                 </div>
-                <div>
-                    <label htmlFor="company-new" className="block text-sm font-medium text-slate-700">Company</label>
-                    <input type="text" id="company-new" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="company-new" className="block text-sm font-medium text-slate-700">Company</label>
+                        <input type="text" id="company-new" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm" />
+                    </div>
+                    <div>
+                        <label htmlFor="zipCode-new" className="block text-sm font-medium text-slate-700">Zip Code</label>
+                        <input type="text" id="zipCode-new" value={zipCode} onChange={e => setZipCode(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm" />
+                    </div>
                 </div>
                 <div>
                     <label htmlFor="googleDriveUrl-new" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>

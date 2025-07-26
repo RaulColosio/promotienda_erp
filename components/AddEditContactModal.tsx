@@ -22,6 +22,7 @@ const AddEditContactModal: React.FC<{
     const [countryCode, setCountryCode] = useState('+52');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [company, setCompany] = useState('');
+    const [zipCode, setZipCode] = useState('');
     const [googleDriveFolderUrl, setGoogleDriveFolderUrl] = useState('');
     const [contactTagIds, setContactTagIds] = useState<string[]>([]);
 
@@ -32,6 +33,7 @@ const AddEditContactModal: React.FC<{
             setEmail(contactToEdit.email);
             setEmail2(contactToEdit.email2 || '');
             setCompany(contactToEdit.company);
+            setZipCode(contactToEdit.zipCode);
             setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
             setContactTagIds(contactToEdit.contactTagIds || []);
 
@@ -59,6 +61,7 @@ const AddEditContactModal: React.FC<{
             setCountryCode('+52');
             setPhoneNumber('');
             setCompany('');
+            setZipCode('');
             setGoogleDriveFolderUrl('');
             setContactTagIds([]);
         }
@@ -73,6 +76,7 @@ const AddEditContactModal: React.FC<{
         const sanitizedEmail2 = email2.replace(/\s/g, '');
         const sanitizedPhoneNumber = phoneNumber.replace(/\s/g, '');
         const sanitizedCompany = company.trim();
+        const sanitizedZipCode = zipCode.trim();
         const sanitizedGoogleDriveUrl = googleDriveFolderUrl.trim();
         
         if (!sanitizedFirstName && !sanitizedLastName && !sanitizedEmail && !sanitizedPhoneNumber && !sanitizedCompany) {
@@ -87,6 +91,7 @@ const AddEditContactModal: React.FC<{
             email2: sanitizedEmail2,
             phone: `${countryCode}${sanitizedPhoneNumber}`,
             company: sanitizedCompany,
+            zipCode: sanitizedZipCode,
             googleDriveFolderUrl: sanitizedGoogleDriveUrl,
             contactTagIds,
         };
@@ -164,15 +169,13 @@ const AddEditContactModal: React.FC<{
                         <input type="text" id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
-                        <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div>
-                        <label htmlFor="email2" className="block text-sm font-medium text-slate-700">Secondary Email (Optional)</label>
-                        <input type="email" id="email2" value={email2} onChange={e => setEmail2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
+                 <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+                    <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+                <div>
+                    <label htmlFor="email2" className="block text-sm font-medium text-slate-700">Secondary Email (Optional)</label>
+                    <input type="email" id="email2" value={email2} onChange={e => setEmail2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                  <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-slate-700">Phone</label>
@@ -201,26 +204,30 @@ const AddEditContactModal: React.FC<{
                         <input type="text" id="company" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                     <div>
-                        <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
-                        <div className="mt-1 flex gap-2">
-                            <input type="url" id="googleDriveUrl" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                            <button
-                                type="button"
-                                onClick={handleSelectFolder}
-                                disabled={!isGoogleDriveConnected || !googleApiReady}
-                                title={!isGoogleDriveConnected ? "Connect to Google Drive in Settings first" : "Select Folder from Google Drive"}
-                                className="flex-shrink-0 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                            >
-                                <LinkIcon className="w-5 h-5" />
-                            </button>
-                        </div>
-                        {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
+                        <label htmlFor="zipCode" className="block text-sm font-medium text-slate-700">Zip Code</label>
+                        <input type="text" id="zipCode" value={zipCode} onChange={e => setZipCode(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                 </div>
-                
+                <div>
+                    <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
+                    <div className="mt-1 flex gap-2">
+                        <input type="url" id="googleDriveUrl" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                        <button
+                            type="button"
+                            onClick={handleSelectFolder}
+                            disabled={!isGoogleDriveConnected || !googleApiReady}
+                            title={!isGoogleDriveConnected ? "Connect to Google Drive in Settings first" : "Select Folder from Google Drive"}
+                            className="flex-shrink-0 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                        >
+                            <LinkIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+                    {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium text-slate-700">Contact Tags</label>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 p-2 border border-slate-300 rounded-md bg-white">
+                    <div className="mt-2 p-2 min-h-[40px] bg-slate-50 border rounded-md flex flex-wrap gap-2">
                         {assignedTags.map(tag => (
                             <span key={tag.id} className={`text-xs font-semibold text-white px-2 py-1 rounded-full flex items-center ${tag.color}`}>
                                 {tag.name}
@@ -229,20 +236,20 @@ const AddEditContactModal: React.FC<{
                                 </button>
                             </span>
                         ))}
-                        <select
-                            onChange={(e) => {
-                                handleAddTag(e.target.value);
-                                e.target.value = '';
-                            }}
-                            value=""
-                            className="flex-grow bg-transparent border-none focus:ring-0 text-sm p-0 min-w-[120px]"
-                        >
-                            <option value="">Add a tag...</option>
-                            {availableTags.map(tag => (
-                                <option key={tag.id} value={tag.id}>{tag.name}</option>
-                            ))}
-                        </select>
                     </div>
+                    <select
+                        onChange={(e) => {
+                            handleAddTag(e.target.value);
+                            e.target.value = '';
+                        }}
+                        value=""
+                        className="mt-2 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm"
+                    >
+                        <option value="">Add a tag...</option>
+                        {availableTags.map(tag => (
+                            <option key={tag.id} value={tag.id}>{tag.name}</option>
+                        ))}
+                    </select>
                 </div>
 
                 <div className="flex justify-between items-center pt-4">

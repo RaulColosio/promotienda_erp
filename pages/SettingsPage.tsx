@@ -1,9 +1,13 @@
+
+
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
 import { User, Tag, MessageTemplate, Contact, Deal, Task, ContactTag, PipelineStage } from '../types';
 import Modal from '../components/Modal';
-import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon, BellRingIcon } from '../components/Icons';
+import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon } from '../components/Icons';
 import AddEditMessageTemplateModal from '../components/AddEditMessageTemplateModal';
 import GlobalSearch from '../components/GlobalSearch';
 import ImportContactsModal from '../components/ImportContactsModal';
@@ -663,7 +667,7 @@ const AutomationsTabContent: React.FC = () => {
       },
       {
         trigger: "Etiqueta 'Serigrafía' es agregada",
-        action: "Crea 2 tareas: 'Preparar positivo' (Raúl Colosio) y 'Impresión de serigrafía' (impresion@promotienda.mx).",
+        action: "Crea tarea 'Preparar positivo' a Raúl Colosio (vence hoy).",
         status: "Activo"
       },
       {
@@ -999,66 +1003,6 @@ const IntegrationsTabContent: React.FC = () => {
     );
 };
 
-// --- Notifications Tab ---
-const NotificationsTabContent: React.FC = () => {
-  const [permission, setPermission] = useState(Notification.permission);
-
-  const handleRequestPermission = async () => {
-    const result = await Notification.requestPermission();
-    setPermission(result);
-  };
-
-  const handleSendTest = () => {
-    if (Notification.permission === 'granted') {
-      new Notification("Test Notification", {
-        body: "If you can see this, desktop notifications are working correctly!",
-        icon: '/vite.svg',
-      });
-    }
-  };
-
-  const renderStatus = () => {
-    switch (permission) {
-      case 'granted':
-        return (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="font-semibold text-green-800">Desktop notifications are enabled.</p>
-            <button onClick={handleSendTest} className="mt-2 text-sm font-semibold text-green-700 hover:underline">
-              Send Test Notification
-            </button>
-          </div>
-        );
-      case 'denied':
-        return (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-            <p className="font-semibold text-red-800">Desktop notifications are disabled.</p>
-            <p className="text-sm text-red-700 mt-1">You need to enable them in your browser settings for this site.</p>
-          </div>
-        );
-      default:
-        return (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-            <p className="font-semibold text-yellow-800">Notifications are not yet enabled.</p>
-            <button onClick={handleRequestPermission} className="mt-2 text-sm font-semibold text-yellow-700 hover:underline">
-              Enable Desktop Notifications
-            </button>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div>
-      <h3 className="text-xl font-semibold text-slate-800">Notifications</h3>
-      <p className="text-sm text-slate-600 my-4">
-        Enable desktop notifications to receive alerts for new messages even when the application is in the background.
-        This feature relies on your browser's capabilities and permissions.
-      </p>
-      {renderStatus()}
-    </div>
-  );
-};
-
 
 // --- Main Settings Page Component ---
 const TABS = {
@@ -1067,7 +1011,6 @@ const TABS = {
     DEAL_TAGS: { id: 'tags', label: 'Deal Tags', icon: TagIcon, content: DealTagsTabContent },
     CONTACT_TAGS: { id: 'contact_tags', label: 'Contact Tags', icon: BookmarkIcon, content: ContactTagsTabContent },
     TEMPLATES: { id: 'templates', label: 'Message Templates', icon: MessageSquareIcon, content: MessageTemplatesTabContent },
-    NOTIFICATIONS: { id: 'notifications', label: 'Notifications', icon: BellRingIcon, content: NotificationsTabContent },
     AUTOMATIONS: { id: 'automations', label: 'Automatizaciones', icon: ZapIcon, content: AutomationsTabContent },
     LOGICS: { id: 'logics', label: 'Lógicas del Sistema', icon: LightbulbIcon, content: LogicsTabContent },
     DATA: { id: 'data', label: 'Data & Archive', icon: ArchiveIcon, content: DataTabContent },

@@ -2,7 +2,7 @@ import React from 'react';
 import { useCrm, formatDate } from '../store/crmStore';
 import { Link } from 'react-router-dom';
 import Modal from './Modal';
-import { EditIcon, LayersIcon, MailIcon, WhatsappIcon, PlusIcon, CloudIcon } from './Icons';
+import { EditIcon, LayersIcon, MailIcon, WhatsappIcon, PlusIcon } from './Icons';
 import { Contact, ContactTag } from '../types';
 import ContactNotesSection from './ContactNotesSection';
 
@@ -15,19 +15,6 @@ interface ContactDetailModalProps {
 const formatWhatsappLink = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
     return `https://web.whatsapp.com/send?phone=${cleaned}`;
-};
-
-const formatGdriveUrl = (url: string): string => {
-    try {
-        const decodedUrl = decodeURIComponent(url);
-        const parts = decodedUrl.split('/Mi unidad/');
-        if (parts.length > 1) {
-            return parts[1].replace(/\//g, ' / ');
-        }
-        return url;
-    } catch (e) {
-        return url;
-    }
 };
 
 const ContactDetailModal: React.FC<ContactDetailModalProps> = ({ isOpen, onClose, contactId }) => {
@@ -79,19 +66,11 @@ const ContactDetailModal: React.FC<ContactDetailModalProps> = ({ isOpen, onClose
                             </div>
                         )}
 
-                        <div className="border-t pt-4 space-y-3 text-sm">
+                        <div className="border-t pt-4 space-y-2 text-sm">
                             {contact.email && <p className="text-slate-700"><strong>Email:</strong> {contact.email}</p>}
                             {contact.email2 && <p className="text-slate-700"><strong>Secondary Email:</strong> {contact.email2}</p>}
                             <p className="text-slate-700"><strong>Phone:</strong> {contact.phone}</p>
-                            {contact.googleDriveFolderUrl && (
-                                <div className="flex items-start text-slate-700">
-                                    <strong className="w-20 flex-shrink-0">Nube:</strong>
-                                    <a href={contact.googleDriveFolderUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline break-all">
-                                        <CloudIcon className="w-4 h-4 flex-shrink-0"/>
-                                        <span>{formatGdriveUrl(contact.googleDriveFolderUrl)}</span>
-                                    </a>
-                                </div>
-                            )}
+                            {contact.zipCode && <p className="text-slate-700"><strong>Zip Code:</strong> {contact.zipCode}</p>}
                         </div>
                     </div>
 

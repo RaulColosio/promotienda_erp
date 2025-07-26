@@ -59,7 +59,7 @@ const MergeContactsModal: React.FC<{
     if (!contactsToMerge || contactsToMerge.length < 2) return null;
 
     const fieldsToMerge = [
-        'firstName', 'lastName', 'email', 'email2', 'phone', 'company', 'googleDriveFolderUrl'
+        'firstName', 'lastName', 'email', 'email2', 'phone', 'company', 'zipCode', 'googleDriveFolderUrl'
     ] as const;
 
     const fieldLabels: Record<typeof fieldsToMerge[number], string> = {
@@ -69,6 +69,7 @@ const MergeContactsModal: React.FC<{
         email2: 'Secondary Email',
         phone: 'Phone',
         company: 'Company',
+        zipCode: 'Zip Code',
         googleDriveFolderUrl: 'Google Drive URL',
     };
 

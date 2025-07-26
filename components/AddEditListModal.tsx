@@ -12,6 +12,7 @@ const fieldOptions: { value: Field, label: string }[] = [
     { value: 'lastName', label: 'Last Name' },
     { value: 'email', label: 'Email' },
     { value: 'company', label: 'Company' },
+    { value: 'zipCode', label: 'Zip Code' },
     { value: 'contactTagIds', label: 'Contact Tags' },
 ];
 
@@ -35,6 +36,10 @@ const operatorOptions: { [key in Field]: { value: Operator, label: string }[] } 
     company: [
         { value: 'contains', label: 'contains' },
         { value: 'not_contains', label: 'does not contain' },
+        { value: 'is', label: 'is' },
+        { value: 'is_not', label: 'is not' },
+    ],
+    zipCode: [
         { value: 'is', label: 'is' },
         { value: 'is_not', label: 'is not' },
     ],

@@ -1,7 +1,6 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
-import 'firebase/compat/storage';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,10 +20,9 @@ if (!firebase.apps.length) {
 
 const db = firebase.firestore();
 const auth = firebase.auth();
-const storage = firebase.storage();
 const googleAuthProvider = new firebase.auth.GoogleAuthProvider();
 
 // Requesting scopes for Google Drive API access
 googleAuthProvider.addScope('https://www.googleapis.com/auth/drive');
 
-export { db, auth, storage, googleAuthProvider };
+export { db, auth, googleAuthProvider };

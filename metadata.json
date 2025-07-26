@@ -1,8 +1,6 @@
 {
   "name": "PROMOTIENDA",
   "description": "A CRM application for internal use, inspired by Bigin, Zoho, and HubSpot, featuring contact management, a deal pipeline, and easy WhatsApp integration.",
-  "requestFramePermissions": [
-    "notifications"
-  ],
+  "requestFramePermissions": [],
   "prompt": ""
 }

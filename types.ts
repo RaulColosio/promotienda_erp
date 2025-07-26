@@ -35,6 +35,7 @@ export interface Contact {
   email2?: string;
   phone: string;
   company: string;
+  zipCode: string;
   createdAt: string;
   deletedAt?: string;
   googleDriveFolderUrl?: string;
@@ -74,8 +75,7 @@ export interface Attachment {
   name: string;
   type: string;
   size: number;
-  url: string; // Public URL for downloading/viewing
-  storagePath: string; // Path in Firebase Storage for management
+  data: string; // Base64 encoded content
 }
 
 export interface Note {
@@ -129,7 +129,7 @@ export interface Notification {
 }
 
 export interface FilterRule {
-  field: 'firstName' | 'lastName' | 'email' | 'company' | 'contactTagIds';
+  field: 'firstName' | 'lastName' | 'email' | 'company' | 'zipCode' | 'contactTagIds';
   operator: 'contains' | 'not_contains' | 'is' | 'is_not' | 'has_tag' | 'not_has_tag';
   value: string; // for has_tag/not_has_tag, this will be a tag ID
 }
