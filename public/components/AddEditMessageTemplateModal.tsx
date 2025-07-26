@@ -30,7 +30,7 @@ const AddEditMessageTemplateModal: React.FC<AddEditMessageTemplateModalProps> = 
 
     const templateData = { title, body };
     if (templateToEdit) {
-      updateMessageTemplate({ ...templateData, id: templateToEdit.id, sortIndex: templateToEdit.sortIndex });
+      updateMessageTemplate({ ...templateData, id: templateToEdit.id });
     } else {
       addMessageTemplate(templateData);
     }

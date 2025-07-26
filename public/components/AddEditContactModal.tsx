@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCrm } from '../store/crmStore';
-import { Contact, ContactTag } from '../types';
+import { Contact } from '../types';
 import Modal from './Modal';
-import { TrashIcon, LinkIcon, XIcon } from './Icons';
+import { TrashIcon, LinkIcon } from './Icons';
 
 const countryCodes = [
     { name: 'Mexico', code: '+52' },
@@ -14,7 +14,7 @@ const AddEditContactModal: React.FC<{
     onClose: () => void; 
     contactToEdit?: Contact | null; 
 }> = ({ isOpen, onClose, contactToEdit }) => {
-    const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
+    const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -24,7 +24,6 @@ const AddEditContactModal: React.FC<{
     const [company, setCompany] = useState('');
     const [zipCode, setZipCode] = useState('');
     const [googleDriveFolderUrl, setGoogleDriveFolderUrl] = useState('');
-    const [contactTagIds, setContactTagIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (contactToEdit) {
@@ -35,7 +34,6 @@ const AddEditContactModal: React.FC<{
             setCompany(contactToEdit.company);
             setZipCode(contactToEdit.zipCode);
             setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
-            setContactTagIds(contactToEdit.contactTagIds || []);
 
             const phoneStr = contactToEdit.phone || '';
             let found = false;
@@ -63,7 +61,6 @@ const AddEditContactModal: React.FC<{
             setCompany('');
             setZipCode('');
             setGoogleDriveFolderUrl('');
-            setContactTagIds([]);
         }
     }, [contactToEdit, isOpen]);
 
@@ -93,7 +90,6 @@ const AddEditContactModal: React.FC<{
             company: sanitizedCompany,
             zipCode: sanitizedZipCode,
             googleDriveFolderUrl: sanitizedGoogleDriveUrl,
-            contactTagIds,
         };
 
         onClose();
@@ -134,27 +130,6 @@ const AddEditContactModal: React.FC<{
             alert("Could not open Google Drive picker. Please ensure you are connected in Settings.");
         }
     };
-    
-    const assignedTags = useMemo(() => 
-        contactTagIds.map(id => contactTags.find(t => t.id === id)).filter(Boolean) as ContactTag[],
-        [contactTagIds, contactTags]
-    );
-
-    const availableTags = useMemo(() =>
-        contactTags.filter(t => !contactTagIds.includes(t.id)),
-        [contactTagIds, contactTags]
-    );
-
-    const handleAddTag = (tagId: string) => {
-        if (tagId && !contactTagIds.includes(tagId)) {
-            setContactTagIds(prev => [...prev, tagId]);
-        }
-    };
-
-    const handleRemoveTag = (tagId: string) => {
-        setContactTagIds(prev => prev.filter(id => id !== tagId));
-    };
-
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={contactToEdit ? 'Edit Contact' : 'Add New Contact'}>
@@ -224,34 +199,6 @@ const AddEditContactModal: React.FC<{
                     </div>
                     {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Contact Tags</label>
-                    <div className="mt-2 p-2 min-h-[40px] bg-slate-50 border rounded-md flex flex-wrap gap-2">
-                        {assignedTags.map(tag => (
-                            <span key={tag.id} className={`text-xs font-semibold text-white px-2 py-1 rounded-full flex items-center ${tag.color}`}>
-                                {tag.name}
-                                <button type="button" onClick={() => handleRemoveTag(tag.id)} className="ml-1.5 -mr-0.5 text-white/70 hover:text-white">
-                                    <XIcon className="w-3 h-3"/>
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                    <select
-                        onChange={(e) => {
-                            handleAddTag(e.target.value);
-                            e.target.value = '';
-                        }}
-                        value=""
-                        className="mt-2 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm"
-                    >
-                        <option value="">Add a tag...</option>
-                        {availableTags.map(tag => (
-                            <option key={tag.id} value={tag.id}>{tag.name}</option>
-                        ))}
-                    </select>
-                </div>
-
                 <div className="flex justify-between items-center pt-4">
                     <div>
                         {contactToEdit && (

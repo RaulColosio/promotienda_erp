@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm } from '../store/crmStore';
-import { PipelineStage } from '../types';
+import { DealStage } from '../types';
 import Modal from './Modal';
 
 interface AddDealModalProps {
@@ -13,11 +13,11 @@ interface AddDealModalProps {
 }
 
 const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultContactId }) => {
-    const { addDeal, contacts, users, pipelineStages, showAlert } = useCrm();
+    const { addDeal, contacts, users, showAlert } = useCrm();
     const navigate = useNavigate();
     const [title, setTitle] = useState('');
     const [contactId, setContactId] = useState('');
-    const [stageId, setStageId] = useState('');
+    const [stage, setStage] = useState<DealStage>(DealStage.NEW);
     const [assignedUserId, setAssignedUserId] = useState('user_raul_colosio');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,15 +25,15 @@ const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultCon
         if (isOpen) {
             setTitle('');
             setContactId(defaultContactId || '');
-            setStageId(pipelineStages.length > 0 ? pipelineStages[0].id : '');
+            setStage(DealStage.NEW);
             setAssignedUserId('user_raul_colosio');
             setIsSubmitting(false);
         }
-    }, [isOpen, defaultContactId, pipelineStages]);
+    }, [isOpen, defaultContactId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !stageId || isSubmitting) return;
+        if (!title || isSubmitting) return;
 
         setIsSubmitting(true);
         try {
@@ -41,7 +41,7 @@ const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultCon
                 title,
                 contactIds: contactId ? [contactId] : [],
                 assignedUserId: assignedUserId,
-                stageId,
+                stage,
                 tagIds: [],
             });
             navigate(`/deals/${newDeal.id}`);
@@ -94,12 +94,12 @@ const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultCon
                     <label htmlFor="stage" className="block text-sm font-medium text-slate-700">Stage</label>
                     <select
                         id="stage"
-                        value={stageId}
-                        onChange={(e) => setStageId(e.target.value)}
+                        value={stage}
+                        onChange={(e) => setStage(e.target.value as DealStage)}
                         className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
-                        {pipelineStages.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
+                        {Object.values(DealStage).map(s => (
+                            <option key={s} value={s}>{s}</option>
                         ))}
                     </select>
                 </div>

@@ -2,12 +2,14 @@
 
 
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
-import { User, Tag, MessageTemplate, Contact, Deal, Task, ContactTag, PipelineStage } from '../types';
+import { User, Tag, MessageTemplate, Contact, Deal, Task, DealStage } from '../types';
 import Modal from '../components/Modal';
-import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon } from '../components/Icons';
+import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon } from '../components/Icons';
 import AddEditMessageTemplateModal from '../components/AddEditMessageTemplateModal';
 import GlobalSearch from '../components/GlobalSearch';
 import ImportContactsModal from '../components/ImportContactsModal';
@@ -38,11 +40,11 @@ const AddEditUserModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !role) return;
+    if (!name || !email || !role) return;
 
     const userData = { name, email, role };
     if (userToEdit) {
-      updateUser({ ...userData, id: userToEdit.id, sortIndex: userToEdit.sortIndex });
+      updateUser({ ...userData, id: userToEdit.id });
     } else {
       addUser(userData);
     }
@@ -57,9 +59,8 @@ const AddEditUserModal: React.FC<{
           <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
         </div>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email (Optional)</label>
-          <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com (for login)" className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-           <p className="mt-1 text-xs text-slate-500">Required only for users who need to log in to the platform.</p>
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+          <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
         </div>
         <div>
           <label htmlFor="role" className="block text-sm font-medium text-slate-700">Role</label>
@@ -75,10 +76,9 @@ const AddEditUserModal: React.FC<{
 };
 
 const UsersTabContent: React.FC = () => {
-    const { users, deleteUser, showConfirmation, reorderUser } = useCrm();
+    const { users, deleteUser, showConfirmation } = useCrm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState<User | null>(null);
-    const dragItem = React.useRef<string | null>(null);
 
     const openAddModal = () => {
         setUserToEdit(null);
@@ -96,10 +96,6 @@ const UsersTabContent: React.FC = () => {
             () => deleteUser(user.id)
         );
     }
-    
-    const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, id: string) => { dragItem.current = id; e.dataTransfer.effectAllowed = 'move'; };
-    const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetId: string) => { e.preventDefault(); if (dragItem.current && dragItem.current !== targetId) { reorderUser(dragItem.current, targetId); } dragItem.current = null; };
-    const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
 
     return (
         <div>
@@ -114,7 +110,6 @@ const UsersTabContent: React.FC = () => {
                 <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                     <tr>
-                    <th scope="col" className="px-2 py-3 w-12"></th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
@@ -123,19 +118,9 @@ const UsersTabContent: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
                     {users.map((user) => (
-                    <tr 
-                        key={user.id} 
-                        className="hover:bg-slate-50"
-                        draggable={user.id !== 'user_raul_colosio'}
-                        onDragStart={(e) => user.id !== 'user_raul_colosio' && handleDragStart(e, user.id)}
-                        onDrop={(e) => user.id !== 'user_raul_colosio' && handleDrop(e, user.id)}
-                        onDragOver={handleDragOver}
-                    >
-                        <td className={`px-4 py-4 whitespace-nowrap text-slate-400 ${user.id !== 'user_raul_colosio' ? 'cursor-move hover:text-slate-600' : ''}`}>
-                           {user.id !== 'user_raul_colosio' && <GripVerticalIcon className="w-5 h-5" />}
-                        </td>
+                    <tr key={user.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{user.email || <span className="text-slate-400 italic">No login</span>}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 user.role === 'Administrador' 
@@ -236,7 +221,7 @@ const AddEditTagModal: React.FC<{
   );
 };
 
-const DealTagsTabContent: React.FC = () => {
+const TagsTabContent: React.FC = () => {
     const { tags, deleteTag, showConfirmation, reorderTag } = useCrm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [tagToEdit, setTagToEdit] = useState<Tag | null>(null);
@@ -332,158 +317,11 @@ const DealTagsTabContent: React.FC = () => {
     );
 };
 
-// --- Contact Tags Management Components ---
-const AddEditContactTagModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  tagToEdit?: ContactTag | null;
-}> = ({ isOpen, onClose, tagToEdit }) => {
-  const { addContactTag, updateContactTag } = useCrm();
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(TAG_COLORS[0]);
-
-  useEffect(() => {
-    if (tagToEdit) {
-      setName(tagToEdit.name);
-      setColor(tagToEdit.color);
-    } else {
-      setName('');
-      setColor(TAG_COLORS[0]);
-    }
-  }, [tagToEdit, isOpen]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !color) return;
-    onClose();
-
-    (async () => {
-        const tagData = { name, color };
-        try {
-            if (tagToEdit) {
-                await updateContactTag({ ...tagData, id: tagToEdit.id, sortIndex: tagToEdit.sortIndex });
-            } else {
-                await addContactTag(tagData);
-            }
-        } catch (error) {
-            console.error("Failed to save contact tag in background:", error);
-        }
-    })();
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={tagToEdit ? 'Edit Contact Tag' : 'Add New Contact Tag'}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="contact-tag-name" className="block text-sm font-medium text-slate-700">Tag Name</label>
-          <input type="text" id="contact-tag-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Color</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TAG_COLORS.map(c => (
-              <button key={c} type="button" onClick={() => setColor(c)} className={`w-8 h-8 rounded-full ${c} ${color === c ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}></button>
-            ))}
-          </div>
-        </div>
-        <div className="flex justify-end pt-4">
-          <button type="button" onClick={onClose} className="mr-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200">Cancel</button>
-          <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700">{tagToEdit ? 'Save Changes' : 'Add Tag'}</button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
-
-const ContactTagsTabContent: React.FC = () => {
-    const { contactTags, deleteContactTag, showConfirmation, reorderContactTag } = useCrm();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [tagToEdit, setTagToEdit] = useState<ContactTag | null>(null);
-    const dragItem = React.useRef<string | null>(null);
-
-    const openAddModal = () => {
-        setTagToEdit(null);
-        setIsModalOpen(true);
-    };
-
-    const openEditModal = (tag: ContactTag) => {
-        setTagToEdit(tag);
-        setIsModalOpen(true);
-    };
-
-    const handleDelete = (tagId: string) => {
-        showConfirmation(
-            'Are you sure you want to delete this contact tag? It will be removed from all associated contacts.',
-            () => deleteContactTag(tagId)
-        );
-    };
-
-    const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, id: string) => { dragItem.current = id; e.dataTransfer.effectAllowed = 'move'; };
-    const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetId: string) => { e.preventDefault(); if (dragItem.current && dragItem.current !== targetId) { reorderContactTag(dragItem.current, targetId); } dragItem.current = null; };
-    const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-
-    return (
-        <div>
-            <AddEditContactTagModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} tagToEdit={tagToEdit} />
-             <div className="flex justify-end mb-4">
-                <button onClick={openAddModal} className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    Add Contact Tag
-                </button>
-            </div>
-             <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                    <tr>
-                        <th scope="col" className="px-2 py-3 w-12"></th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Preview</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                    {contactTags.map((tag) => (
-                    <tr 
-                        key={tag.id} 
-                        className="hover:bg-slate-50"
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, tag.id)}
-                        onDrop={(e) => handleDrop(e, tag.id)}
-                        onDragOver={handleDragOver}
-                    >
-                        <td className="px-4 py-4 whitespace-nowrap cursor-move text-slate-400 hover:text-slate-600">
-                            <GripVerticalIcon className="w-5 h-5" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`text-xs font-semibold text-white px-2 py-1 rounded-full ${tag.color}`}>
-                                {tag.name}
-                            </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{tag.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center gap-4">
-                          <button onClick={() => openEditModal(tag)} className="text-blue-600 hover:text-blue-900">
-                            <EditIcon className="w-5 h-5" />
-                          </button>
-                          <button onClick={() => handleDelete(tag.id)} className="text-red-600 hover:text-red-900">
-                            <TrashIcon className="w-5 h-5" />
-                          </button>
-                        </td>
-                    </tr>
-                    ))}
-                </tbody>
-                </table>
-            </div>
-        </div>
-    );
-};
-
-
 // --- Message Templates Management Components ---
 const MessageTemplatesTabContent: React.FC = () => {
-    const { messageTemplates, deleteMessageTemplate, showConfirmation, reorderMessageTemplate } = useCrm();
+    const { messageTemplates, deleteMessageTemplate, showConfirmation } = useCrm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [templateToEdit, setTemplateToEdit] = useState<MessageTemplate | null>(null);
-    const dragItem = React.useRef<string | null>(null);
 
     const openAddModal = () => {
         setTemplateToEdit(null);
@@ -502,11 +340,6 @@ const MessageTemplatesTabContent: React.FC = () => {
         );
     };
 
-    const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, id: string) => { dragItem.current = id; e.dataTransfer.effectAllowed = 'move'; };
-    const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetId: string) => { e.preventDefault(); if (dragItem.current && dragItem.current !== targetId) { reorderMessageTemplate(dragItem.current, targetId); } dragItem.current = null; };
-    const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-
-
     return (
         <div>
             <AddEditMessageTemplateModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} templateToEdit={templateToEdit} />
@@ -520,7 +353,6 @@ const MessageTemplatesTabContent: React.FC = () => {
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                         <tr>
-                            <th scope="col" className="px-2 py-3 w-12"></th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Title</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Body</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
@@ -528,17 +360,7 @@ const MessageTemplatesTabContent: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
                         {messageTemplates.map((template) => (
-                            <tr 
-                                key={template.id} 
-                                className="hover:bg-slate-50"
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, template.id)}
-                                onDrop={(e) => handleDrop(e, template.id)}
-                                onDragOver={handleDragOver}
-                            >
-                                <td className="px-4 py-4 whitespace-nowrap cursor-move text-slate-400 hover:text-slate-600">
-                                    <GripVerticalIcon className="w-5 h-5" />
-                                </td>
+                            <tr key={template.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{template.title}</td>
                                 <td className="px-6 py-4 whitespace-normal text-sm text-slate-700 max-w-md">
                                     <p className="truncate" title={template.body}>{template.body}</p>
@@ -560,78 +382,6 @@ const MessageTemplatesTabContent: React.FC = () => {
     );
 };
 
-// --- Pipeline Management Components ---
-const PipelineTabContent: React.FC = () => {
-    const { pipelineStages, updatePipelineStage, reorderPipelineStage } = useCrm();
-    const [editingStage, setEditingStage] = useState<PipelineStage | null>(null);
-    const [stageName, setStageName] = useState('');
-    const dragItem = React.useRef<string | null>(null);
-
-    const handleEditClick = (stage: PipelineStage) => {
-        setEditingStage(stage);
-        setStageName(stage.name);
-    };
-
-    const handleSave = async (stage: PipelineStage) => {
-        if (!stageName.trim()) return;
-        await updatePipelineStage({ ...stage, name: stageName });
-        setEditingStage(null);
-    };
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => { dragItem.current = id; e.dataTransfer.effectAllowed = 'move'; };
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => { e.preventDefault(); if (dragItem.current && dragItem.current !== targetId) { reorderPipelineStage(dragItem.current, targetId); } dragItem.current = null; };
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-
-    return (
-        <div>
-            <h3 className="text-xl font-semibold text-slate-800">Pipeline Stages</h3>
-            <p className="text-sm text-slate-600 my-4">
-                Customize your sales pipeline by renaming and reordering stages. Drag and drop to change the order.
-            </p>
-            <div className="space-y-2 max-w-md">
-                {pipelineStages.map(stage => (
-                    <div
-                        key={stage.id}
-                        className="flex items-center gap-4 p-2 bg-slate-50 border rounded-lg hover:bg-slate-100"
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, stage.id)}
-                        onDrop={(e) => handleDrop(e, stage.id)}
-                        onDragOver={handleDragOver}
-                    >
-                        <div className="cursor-move text-slate-400 hover:text-slate-600 p-2">
-                            <GripVerticalIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-grow">
-                            {editingStage?.id === stage.id ? (
-                                <input
-                                    type="text"
-                                    value={stageName}
-                                    onChange={e => setStageName(e.target.value)}
-                                    className="block w-full px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm text-sm"
-                                    autoFocus
-                                />
-                            ) : (
-                                <span className="text-sm font-medium text-slate-800">{stage.name}</span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {editingStage?.id === stage.id ? (
-                                <>
-                                    <button onClick={() => handleSave(stage)} className="text-green-600 hover:text-green-800"><CheckIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => setEditingStage(null)} className="text-red-600 hover:text-red-800"><XIcon className="w-5 h-5"/></button>
-                                </>
-                            ) : (
-                                <button onClick={() => handleEditClick(stage)} className="text-blue-600 hover:text-blue-800"><EditIcon className="w-5 h-5"/></button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-
 // --- Automations Tab ---
 const AutomationsTabContent: React.FC = () => {
     const existingAutomations = [
@@ -640,28 +390,28 @@ const AutomationsTabContent: React.FC = () => {
         action: "Crea tarea 'Enviar cotización' al usuario asignado (vence hoy).",
         status: "Activo"
       },
-       {
-        trigger: "Se crea un nuevo contacto",
-        action: "Asigna automáticamente la etiqueta 'Lead'.",
+      {
+        trigger: "Fase cambia a 'Producción'",
+        action: "Requiere al menos una etiqueta de tipo de producción.",
         status: "Activo"
       },
       {
-        trigger: "Deal pasa a fase 'Ganado'",
-        action: "Al contacto asociado: agrega etiqueta 'Cliente' y elimina 'Lead'.",
-        status: "Activo"
-      },
-      {
-        trigger: "Deal pasa a fase 'Ganado'",
-        action: "Crea tarea 'Enviar el Google review' para Raúl Colosio (vence en 2 días laborables).",
-        status: "Activo"
-      },
-      {
-        trigger: "Deal entra a fase 'Producción'",
+        trigger: "Fase cambia a 'Producción'",
         action: "Agrega automáticamente la etiqueta 'Recibido'.",
         status: "Activo"
       },
       {
-        trigger: "Deal entra a fase 'Compra de material'",
+        trigger: "Fase sale de 'Producción'",
+        action: "Elimina todas las etiquetas asignadas.",
+        status: "Activo"
+      },
+      {
+        trigger: "Fase cambia a 'Compra de material'",
+        action: "Solicita establecer una fecha de entrega.",
+        status: "Activo"
+      },
+      {
+        trigger: "Fase cambia a 'Compra de material'",
         action: "Crea tarea 'Comprar material' al usuario asignado (vence hoy).",
         status: "Activo"
       },
@@ -722,37 +472,6 @@ const AutomationsTabContent: React.FC = () => {
     </div>
   );
 };
-
-// --- System Logics Tab ---
-const LogicsTabContent: React.FC = () => {
-    const systemLogics = [
-        { category: 'Deals & Tasks', logic: "Un deal o tarea debe tener siempre un usuario asignado." },
-        { category: 'Contacts', logic: "Un contacto no puede tener las etiquetas 'Lead' y 'Cliente' al mismo tiempo. 'Cliente' tiene prioridad y 'Lead' se elimina si ambas están presentes." },
-        { category: 'Production Stage', logic: "Un deal en 'Producción' debe tener al menos una etiqueta de tipo de producción para indicar el proceso." },
-        { category: 'Production Stage', logic: "Al agregar una etiqueta de producción (ej. Serigrafía) a un deal que ya tiene 'Recibido', esta última se elimina automáticamente." },
-        { category: 'Production Stage', logic: "Al salir de la fase de 'Producción', se eliminan todas las etiquetas de producción asignadas." },
-        { category: 'General', logic: "El cálculo de fechas para tareas (ej. 'En 2 días') omite los domingos, considerándolos días no laborables." },
-    ];
-
-  return (
-    <div>
-      <h3 className="text-xl font-semibold text-slate-800">Lógicas del Sistema</h3>
-      <p className="text-sm text-slate-600 my-4">
-        Estas son las reglas de negocio fundamentales que garantizan la integridad y consistencia de los datos en toda la aplicación. No son flujos de trabajo, sino restricciones y comportamientos base del sistema.
-      </p>
-      
-      <div className="space-y-4">
-        {systemLogics.map((item, index) => (
-            <div key={index} className="bg-slate-50 border border-slate-200 p-4 rounded-lg">
-                <span className="text-xs font-semibold uppercase text-slate-400">{item.category}</span>
-                <p className="text-slate-700 mt-1">{item.logic}</p>
-            </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 
 // --- Data Management (Archive & Import/Export) ---
 const DataTabContent: React.FC = () => {
@@ -1007,12 +726,9 @@ const IntegrationsTabContent: React.FC = () => {
 // --- Main Settings Page Component ---
 const TABS = {
     USERS: { id: 'users', label: 'Users', icon: UsersIcon, content: UsersTabContent },
-    PIPELINE: { id: 'pipeline', label: 'Pipeline', icon: TrendingUpIcon, content: PipelineTabContent },
-    DEAL_TAGS: { id: 'tags', label: 'Deal Tags', icon: TagIcon, content: DealTagsTabContent },
-    CONTACT_TAGS: { id: 'contact_tags', label: 'Contact Tags', icon: BookmarkIcon, content: ContactTagsTabContent },
+    TAGS: { id: 'tags', label: 'Tags', icon: TagIcon, content: TagsTabContent },
     TEMPLATES: { id: 'templates', label: 'Message Templates', icon: MessageSquareIcon, content: MessageTemplatesTabContent },
     AUTOMATIONS: { id: 'automations', label: 'Automatizaciones', icon: ZapIcon, content: AutomationsTabContent },
-    LOGICS: { id: 'logics', label: 'Lógicas del Sistema', icon: LightbulbIcon, content: LogicsTabContent },
     DATA: { id: 'data', label: 'Data & Archive', icon: ArchiveIcon, content: DataTabContent },
     INTEGRATIONS: { id: 'integrations', label: 'Integrations', icon: LinkIcon, content: IntegrationsTabContent },
     DIAGNOSTICS: {id: 'diagnostics', label: 'Diagnostics', icon: TerminalIcon, content: NotificationDiagnostics }

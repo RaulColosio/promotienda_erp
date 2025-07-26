@@ -1,7 +1,17 @@
-export interface PipelineStage {
-  id: string;
-  name: string;
-  sortIndex: number;
+export enum DealStage {
+  NEW = 'Nuevos',
+  CONTACTED = 'Contactados',
+  REVIEW = 'En revisión',
+  APPROVED = 'Aprobado',
+  MATERIAL_PURCHASE = 'Compra de material',
+  IN_TRANSIT = 'En camino',
+  PRODUCTION = 'Producción',
+  EXTERNAL_WORKSHOP = 'Taller externo',
+  READY_LOCAL = 'Listo en local',
+  AWAITING_PAYMENT = 'Espera de pago',
+  READY_FOR_DELIVERY = 'Listo para entrega',
+  WON = 'Ganado',
+  LOST = 'Perdido',
 }
 
 export interface User {
@@ -10,17 +20,9 @@ export interface User {
   email: string;
   role: string;
   authUid?: string;
-  sortIndex: number;
 }
 
 export interface Tag {
-  id: string;
-  name: string;
-  color: string;
-  sortIndex: number;
-}
-
-export interface ContactTag {
   id: string;
   name: string;
   color: string;
@@ -39,7 +41,6 @@ export interface Contact {
   createdAt: string;
   deletedAt?: string;
   googleDriveFolderUrl?: string;
-  contactTagIds?: string[];
 }
 
 export type DeliveryMethod = 'pickup' | 'shipping';
@@ -47,7 +48,7 @@ export type DeliveryMethod = 'pickup' | 'shipping';
 export interface Deal {
   id:string;
   title: string;
-  stageId: string;
+  stage: DealStage;
   contactIds: string[];
   tagIds: string[];
   createdAt: string;
@@ -100,7 +101,6 @@ export interface MessageTemplate {
   id: string;
   title: string;
   body: string;
-  sortIndex: number;
 }
 
 export interface Quote {
@@ -126,22 +126,4 @@ export interface Notification {
     name: string;
   };
   sourceNoteId?: string;
-}
-
-export interface FilterRule {
-  field: 'firstName' | 'lastName' | 'email' | 'company' | 'zipCode' | 'contactTagIds';
-  operator: 'contains' | 'not_contains' | 'is' | 'is_not' | 'has_tag' | 'not_has_tag';
-  value: string; // for has_tag/not_has_tag, this will be a tag ID
-}
-
-export interface DynamicList {
-  id: string;
-  name: string;
-  assignedTagIds: string[];
-  rules: FilterRule[];
-}
-
-export interface BulkContactUpdatePayload {
-  addTagIds: string[];
-  removeTagIds: string[];
 }

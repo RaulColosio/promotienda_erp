@@ -18,7 +18,7 @@ import AddEditContactModal from './components/AddEditContactModal';
 import AddDealModal from './components/AddDealModal';
 import AlertModal from './components/AlertModal';
 import NotificationCenter from './components/NotificationCenter';
-import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, DollarSignIcon, PaintBrushIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
+import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -53,11 +53,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
       <nav className={`p-4 space-y-2 overflow-y-auto flex-grow ${isCollapsed ? 'px-2' : 'px-4'}`}>
         <NavLink to="/deals" className={navLinkClasses} title="Ventas">
-          <DollarSignIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
+          <LayersIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
           {!isCollapsed && <span className="truncate">Ventas</span>}
         </NavLink>
         <NavLink to="/production" className={navLinkClasses} title="Producción">
-          <PaintBrushIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
+          <TagIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
           {!isCollapsed && <span className="truncate">Producción</span>}
         </NavLink>
         

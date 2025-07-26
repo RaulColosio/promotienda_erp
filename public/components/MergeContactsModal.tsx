@@ -42,10 +42,8 @@ const MergeContactsModal: React.FC<{
         setIsMerging(true);
         try {
             const otherIds = contactsToMerge.map(c => c.id).filter(id => id !== masterId);
-            
             // Ensure we don't pass the ID in the update object
             const { id, ...updateData } = finalData;
-
             await mergeContacts(masterId, updateData, otherIds);
             onClose();
         } catch (error) {
@@ -58,11 +56,11 @@ const MergeContactsModal: React.FC<{
     
     if (!contactsToMerge || contactsToMerge.length < 2) return null;
 
-    const fieldsToMerge = [
+    const fieldsToMerge: (keyof Omit<Contact, 'id' | 'createdAt' | 'deletedAt'>)[] = [
         'firstName', 'lastName', 'email', 'email2', 'phone', 'company', 'zipCode', 'googleDriveFolderUrl'
-    ] as const;
+    ];
 
-    const fieldLabels: Record<typeof fieldsToMerge[number], string> = {
+    const fieldLabels: Record<string, string> = {
         firstName: 'First Name',
         lastName: 'Last Name',
         email: 'Email',
@@ -114,7 +112,7 @@ const MergeContactsModal: React.FC<{
                                                     onChange={() => handleFieldSelect(field, contact[field])}
                                                     className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                                                 />
-                                                <span className="ml-2 truncate" title={(contact[field] as string) || ''}>{(contact[field] as string) || <i className="text-slate-400">empty</i>}</span>
+                                                <span className="ml-2 truncate" title={contact[field] || ''}>{contact[field] || <i className="text-slate-400">empty</i>}</span>
                                             </label>
                                         </td>
                                     ))}
