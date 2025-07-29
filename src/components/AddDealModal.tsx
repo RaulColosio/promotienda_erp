@@ -1,10 +1,10 @@
 
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm } from '../store/crmStore';
-import { PipelineStage } from '../types';
+import { Contact } from '../types';
 import Modal from './Modal';
+import { XIcon, UsersIcon } from './Icons';
 
 interface AddDealModalProps {
     isOpen: boolean;
@@ -13,23 +13,81 @@ interface AddDealModalProps {
 }
 
 const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultContactId }) => {
-    const { addDeal, contacts, users, pipelineStages, showAlert } = useCrm();
+    const { addDeal, contacts, users, pipelineStages, showAddEditContact, getContactById } = useCrm();
     const navigate = useNavigate();
+    
     const [title, setTitle] = useState('');
-    const [contactId, setContactId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [stageId, setStageId] = useState('');
     const [assignedUserId, setAssignedUserId] = useState('user_raul_colosio');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         if (isOpen) {
             setTitle('');
-            setContactId(defaultContactId || '');
+            setSearchQuery('');
+            setIsSearchFocused(false);
             setStageId(pipelineStages.length > 0 ? pipelineStages[0].id : '');
             setAssignedUserId('user_raul_colosio');
             setIsSubmitting(false);
+
+            if (defaultContactId) {
+                const contact = getContactById(defaultContactId);
+                setSelectedContact(contact || null);
+            } else {
+                setSelectedContact(null);
+            }
         }
-    }, [isOpen, defaultContactId, pipelineStages]);
+    }, [isOpen, defaultContactId, pipelineStages, getContactById]);
+
+    const searchResults = useMemo(() => {
+        if (!searchQuery) return [];
+        const lowerQuery = searchQuery.toLowerCase();
+        return contacts.filter(c =>
+          `${c.firstName} ${c.lastName}`.toLowerCase().includes(lowerQuery) ||
+          c.email?.toLowerCase().includes(lowerQuery) ||
+          c.company?.toLowerCase().includes(lowerQuery)
+        ).slice(0, 5);
+    }, [searchQuery, contacts]);
+    
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsSearchFocused(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelectContact = (contact: Contact) => {
+        setSelectedContact(contact);
+        setSearchQuery('');
+        setIsSearchFocused(false);
+    };
+
+    const handleClearContact = () => {
+        setSelectedContact(null);
+    };
+
+    const handleCreateNewContact = () => {
+        const nameParts = searchQuery.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        showAddEditContact(null, {
+            initialValues: { firstName, lastName },
+            onSave: (newContact) => {
+                setSelectedContact(newContact);
+                setIsSearchFocused(false);
+                setSearchQuery('');
+            }
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,21 +97,21 @@ const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultCon
         try {
             const newDeal = await addDeal({
                 title,
-                contactIds: contactId ? [contactId] : [],
+                contactIds: selectedContact ? [selectedContact.id] : [],
                 assignedUserId: assignedUserId,
                 stageId,
                 tagIds: [],
             });
             navigate(`/deals/${newDeal.id}`);
-            onClose(); // Close only on success
+            onClose();
         } catch (error) {
             console.error("Failed to create deal:", error);
-            // The store shows an alert. We just need to stop the loading state
-            // and keep the modal open for correction.
         } finally {
             setIsSubmitting(false);
         }
     };
+    
+    const showSearchResults = isSearchFocused && searchQuery && !selectedContact;
     
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Add New Deal">
@@ -62,21 +120,53 @@ const AddDealModal: React.FC<AddDealModalProps> = ({ isOpen, onClose, defaultCon
                     <label htmlFor="title" className="block text-sm font-medium text-slate-700">Deal Title</label>
                     <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
                 </div>
+                
                 <div>
-                    <label htmlFor="contact" className="block text-sm font-medium text-slate-700">Contact</label>
-                    <select
-                        id="contact"
-                        value={contactId}
-                        onChange={(e) => setContactId(e.target.value)}
-                        className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        disabled={!!defaultContactId}
-                    >
-                        <option value="">Select a contact (optional)</option>
-                        {contacts.map(contact => (
-                            <option key={contact.id} value={contact.id}>{contact.firstName} {contact.lastName} - {contact.company}</option>
-                        ))}
-                    </select>
+                    <label htmlFor="contact-search" className="block text-sm font-medium text-slate-700">Contact</label>
+                    <div ref={searchContainerRef} className="relative mt-1">
+                        {selectedContact ? (
+                            <div className="flex items-center justify-between p-2 bg-slate-100 border border-slate-300 rounded-md">
+                                <span className="text-sm font-medium text-slate-800">{selectedContact.firstName} {selectedContact.lastName}</span>
+                                {!defaultContactId && (
+                                    <button type="button" onClick={handleClearContact} className="text-slate-500 hover:text-slate-700">
+                                        <XIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                             <input
+                                type="text"
+                                id="contact-search"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => setIsSearchFocused(true)}
+                                placeholder="Search by name, email, or company"
+                                className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                disabled={!!defaultContactId}
+                                autoComplete="off"
+                            />
+                        )}
+                        
+                        {showSearchResults && (
+                            <div className="absolute z-10 w-full mt-1 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                <ul>
+                                    {searchResults.map(contact => (
+                                        <li key={contact.id} onMouseDown={() => handleSelectContact(contact)} className="text-slate-900 cursor-pointer select-none relative py-2 px-4 hover:bg-slate-100">
+                                            <span className="font-normal block truncate">{contact.firstName} {contact.lastName}</span>
+                                            <span className="text-slate-500 text-xs block truncate">{contact.company}</span>
+                                        </li>
+                                    ))}
+                                    {searchResults.length === 0 && searchQuery && (
+                                         <li onMouseDown={handleCreateNewContact} className="text-blue-600 cursor-pointer select-none relative py-2 px-4 hover:bg-blue-50">
+                                            + Create new contact: "{searchQuery}"
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
                 </div>
+
                  <div>
                     <label htmlFor="assignedUser" className="block text-sm font-medium text-slate-700">Assigned To</label>
                     <select

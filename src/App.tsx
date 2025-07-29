@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CrmProvider, useCrm } from './store/crmStore';
@@ -257,13 +258,29 @@ const NotificationController: React.FC = () => {
 const App: React.FC = () => {
   const [confirmation, setConfirmation] = useState<{ isOpen: boolean; message: string; onConfirm: () => void | Promise<void>; } | null>(null);
   const [contactDetail, setContactDetail] = useState<{ isOpen: boolean; contactId: string | null }>({ isOpen: false, contactId: null });
-  const [addEditContact, setAddEditContact] = useState<{ isOpen: boolean; contactToEdit: Contact | null | undefined }>({ isOpen: false, contactToEdit: null });
+  const [addEditContact, setAddEditContact] = useState<{
+    isOpen: boolean;
+    contactToEdit?: Contact | null;
+    initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
+    onSave?: (newContact: Contact) => void;
+  }>({ isOpen: false });
   const [addDeal, setAddDeal] = useState<{ isOpen: boolean, contactId?: string }>({ isOpen: false });
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string } | null>(null);
 
   const showConfirmation = (message: string, onConfirm: () => void | Promise<void>) => setConfirmation({ isOpen: true, message, onConfirm });
   const showContactDetail = (contactId: string) => setContactDetail({ isOpen: true, contactId });
-  const showAddEditContact = (contact?: Contact | null) => setAddEditContact({ isOpen: true, contactToEdit: contact });
+  const showAddEditContact = (
+    contact?: Contact | null,
+    config?: {
+        initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
+        onSave?: (newContact: Contact) => void;
+    }
+  ) => setAddEditContact({
+      isOpen: true,
+      contactToEdit: contact,
+      initialValues: config?.initialValues,
+      onSave: config?.onSave,
+  });
   const showAddDeal = (contactId?: string) => setAddDeal({ isOpen: true, contactId });
   const showAlert = (title: string, message: string) => setAlert({ isOpen: true, title, message });
 
@@ -276,7 +293,7 @@ const App: React.FC = () => {
   }
 
   const handleCloseContactDetail = () => setContactDetail({ isOpen: false, contactId: null });
-  const handleCloseAddEditContact = () => setAddEditContact({ isOpen: false, contactToEdit: null });
+  const handleCloseAddEditContact = () => setAddEditContact({ isOpen: false });
   const handleCloseAddDeal = () => setAddDeal({ isOpen: false });
   const handleCloseAlert = () => setAlert(null);
   
@@ -293,27 +310,30 @@ const App: React.FC = () => {
         <NotificationController />
         <AppRoutes />
         
+        {/* Modal Rendering Order: Modals that can be opened by other modals should be rendered later to ensure they appear on top. */}
+        <ContactDetailModal
+          isOpen={contactDetail.isOpen}
+          onClose={handleCloseContactDetail}
+          contactId={contactDetail.contactId}
+        />
+        <AddDealModal
+          isOpen={addDeal.isOpen}
+          onClose={handleCloseAddDeal}
+          defaultContactId={addDeal.contactId}
+        />
+        <AddEditContactModal
+          isOpen={addEditContact.isOpen}
+          onClose={handleCloseAddEditContact}
+          contactToEdit={addEditContact.contactToEdit}
+          initialValues={addEditContact.initialValues}
+          onSave={addEditContact.onSave}
+        />
         <ConfirmationModal
           isOpen={confirmation?.isOpen || false}
           onClose={handleCloseConfirmation}
           onConfirm={handleConfirm}
           title="Confirm Action"
           message={confirmation?.message || ''}
-        />
-        <ContactDetailModal
-          isOpen={contactDetail.isOpen}
-          onClose={handleCloseContactDetail}
-          contactId={contactDetail.contactId}
-        />
-        <AddEditContactModal
-          isOpen={addEditContact.isOpen}
-          onClose={handleCloseAddEditContact}
-          contactToEdit={addEditContact.contactToEdit}
-        />
-        <AddDealModal
-          isOpen={addDeal.isOpen}
-          onClose={handleCloseAddDeal}
-          defaultContactId={addDeal.contactId}
         />
         <AlertModal
             isOpen={alert?.isOpen || false}
