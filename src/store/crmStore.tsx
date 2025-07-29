@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage, Attachment } from '../types';
-import { auth, db, storage, googleAuthProvider } from '../services/firebase';
+import { auth, db, storage, googleAuthProvider } from '../firebase';
 import firebase from 'firebase/compat/app';
 
 const permanentUser: User = {
@@ -164,13 +164,7 @@ interface CrmContextType {
 
   showConfirmation: (message: string, onConfirm: () => void | Promise<void>) => void;
   showContactDetail: (contactId: string) => void;
-  showAddEditContact: (
-    contact?: Contact | null,
-    config?: {
-        initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
-        onSave?: (newContact: Contact) => void;
-    }
-  ) => void;
+  showAddEditContact: (contact?: Contact | null) => void;
   showAddDeal: (contactId?: string) => void;
   showAlert: (title: string, message: string) => void;
 

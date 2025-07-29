@@ -9,21 +9,11 @@ const countryCodes = [
     { name: 'USA', code: '+1' },
 ];
 
-interface AddEditContactModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    contactToEdit?: Contact | null;
-    initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
-    onSave?: (newContact: Contact) => void;
-}
-
-const AddEditContactModal: React.FC<AddEditContactModalProps> = ({ 
-    isOpen, 
-    onClose, 
-    contactToEdit, 
-    initialValues, 
-    onSave 
-}) => {
+const AddEditContactModal: React.FC<{ 
+    isOpen: boolean; 
+    onClose: () => void; 
+    contactToEdit?: Contact | null; 
+}> = ({ isOpen, onClose, contactToEdit }) => {
     const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -36,46 +26,45 @@ const AddEditContactModal: React.FC<AddEditContactModalProps> = ({
     const [contactTagIds, setContactTagIds] = useState<string[]>([]);
 
     useEffect(() => {
-        if (isOpen) {
-            if (contactToEdit) {
-                setFirstName(contactToEdit.firstName);
-                setLastName(contactToEdit.lastName);
-                setEmail(contactToEdit.email);
-                setEmail2(contactToEdit.email2 || '');
-                setCompany(contactToEdit.company);
-                setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
-                setContactTagIds(contactToEdit.contactTagIds || []);
+        if (contactToEdit) {
+            setFirstName(contactToEdit.firstName);
+            setLastName(contactToEdit.lastName);
+            setEmail(contactToEdit.email);
+            setEmail2(contactToEdit.email2 || '');
+            setCompany(contactToEdit.company);
+            setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
+            setContactTagIds(contactToEdit.contactTagIds || []);
 
-                const phoneStr = contactToEdit.phone || '';
-                let found = false;
-                const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
-                for (const c of sortedCodes) {
-                    if (phoneStr.startsWith(c.code)) {
-                        setCountryCode(c.code);
-                        setPhoneNumber(phoneStr.substring(c.code.length));
-                        found = true;
-                        break;
-                    }
+            const phoneStr = contactToEdit.phone || '';
+            let found = false;
+            const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
+            for (const c of sortedCodes) {
+                if (phoneStr.startsWith(c.code)) {
+                    setCountryCode(c.code);
+                    setPhoneNumber(phoneStr.substring(c.code.length));
+                    found = true;
+                    break;
                 }
-                if (!found) {
-                    setCountryCode('+52');
-                    setPhoneNumber(phoneStr.replace(/\D/g, ''));
-                }
-            } else {
-                setFirstName(initialValues?.firstName || '');
-                setLastName(initialValues?.lastName || '');
-                setEmail(initialValues?.email || '');
-                setEmail2('');
-                setCountryCode('+52');
-                setPhoneNumber('');
-                setCompany(initialValues?.company || '');
-                setGoogleDriveFolderUrl('');
-                setContactTagIds([]);
             }
-        }
-    }, [contactToEdit, isOpen, initialValues]);
+            if (!found) {
+                setCountryCode('+52');
+                setPhoneNumber(phoneStr.replace(/\D/g, ''));
+            }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+        } else {
+            setFirstName('');
+            setLastName('');
+            setEmail('');
+            setEmail2('');
+            setCountryCode('+52');
+            setPhoneNumber('');
+            setCompany('');
+            setGoogleDriveFolderUrl('');
+            setContactTagIds([]);
+        }
+    }, [contactToEdit, isOpen]);
+
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         const sanitizedFirstName = firstName.trim();
@@ -101,20 +90,20 @@ const AddEditContactModal: React.FC<AddEditContactModalProps> = ({
             googleDriveFolderUrl: sanitizedGoogleDriveUrl,
             contactTagIds,
         };
-        
-        try {
-            if (contactToEdit) {
-                await updateContact({ ...contactData, id: contactToEdit.id, createdAt: contactToEdit.createdAt });
-            } else {
-                const newContact = await addContact(contactData);
-                if (onSave) {
-                    onSave(newContact);
+
+        onClose();
+
+        (async () => {
+            try {
+                if (contactToEdit) {
+                    await updateContact({ ...contactData, id: contactToEdit.id, createdAt: contactToEdit.createdAt });
+                } else {
+                    await addContact(contactData);
                 }
+            } catch (error) {
+                console.error("Failed to save contact in background:", error);
             }
-            onClose();
-        } catch (error) {
-            console.error("Failed to save contact:", error);
-        }
+        })();
     };
 
     const handleDelete = () => {
