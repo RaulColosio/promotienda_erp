@@ -113,15 +113,9 @@ const ContactDetailModal: React.FC<ContactDetailModalProps> = ({ isOpen, onClose
             </div>
 
             <div>
-                <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <LayersIcon className="w-5 h-5 mr-2 text-slate-500" /> Associated Deals ({associatedDeals.length})
-                    </h4>
-                    <button onClick={handleCreateDeal} className="flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md hover:bg-blue-50">
-                        <PlusIcon className="w-4 h-4 mr-1"/>
-                        Add Deal
-                    </button>
-                </div>
+                <h4 className="text-lg font-semibold text-slate-800 flex items-center mb-2">
+                    <LayersIcon className="w-5 h-5 mr-2 text-slate-500" /> Associated Deals ({associatedDeals.length})
+                </h4>
                 <div className="border rounded-lg max-h-40 overflow-y-auto">
                     {associatedDeals.length > 0 ? (
                         <ul className="divide-y divide-slate-200">
