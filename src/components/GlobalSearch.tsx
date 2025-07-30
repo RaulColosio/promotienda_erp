@@ -1,13 +1,17 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCrm } from '../store/crmStore';
 import { useNavigate } from 'react-router-dom';
-import { SearchIcon, LayersIcon, UsersIcon } from './Icons';
+import { SearchIcon, LayersIcon, UsersIcon, PlusIcon } from './Icons';
 import { Deal, Contact } from '../types';
+import AddDealModal from './AddDealModal';
+import AddEditContactModal from './AddEditContactModal';
 
 const GlobalSearch: React.FC = () => {
     const { deals, contacts, showContactDetail } = useCrm();
     const [query, setQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
+    const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
+    const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
     const navigate = useNavigate();
     const searchRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +66,16 @@ const GlobalSearch: React.FC = () => {
         setQuery('');
         setIsFocused(false);
     }
+
+    const handleCreateDealClick = () => {
+        setIsAddDealModalOpen(true);
+        setIsFocused(false);
+    };
+
+    const handleCreateContactClick = () => {
+        setIsAddContactModalOpen(true);
+        setIsFocused(false);
+    };
     
     const showResults = isFocused && query.length >= 2;
 
@@ -113,12 +127,43 @@ const GlobalSearch: React.FC = () => {
                             </>
                         ) : (
                             <div className="px-4 py-3 text-sm text-center text-slate-500">
-                                No results found for "{query}".
+                                <p>No results found for "{query}".</p>
+                                <div className="mt-4 flex justify-center gap-2">
+                                    <button
+                                        onClick={handleCreateDealClick}
+                                        className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        <PlusIcon className="w-4 h-4 mr-2" />
+                                        Create Deal
+                                    </button>
+                                    <button
+                                        onClick={handleCreateContactClick}
+                                        className="flex items-center justify-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        <PlusIcon className="w-4 h-4 mr-2" />
+                                        Create Contact
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             )}
+
+            <AddDealModal 
+                isOpen={isAddDealModalOpen} 
+                onClose={() => setIsAddDealModalOpen(false)}
+                initialTitle={query}
+            />
+            <AddEditContactModal 
+                isOpen={isAddContactModalOpen} 
+                onClose={() => setIsAddContactModalOpen(false)} 
+                contactToEdit={null}
+                onContactAdded={(newContact) => {
+                    // After creating a contact from search, we might want to create a deal with them
+                    // For now, just close the modal. A more advanced flow could open the deal modal.
+                }}
+            />
         </div>
     );
 };
