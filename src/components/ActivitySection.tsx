@@ -188,13 +188,22 @@ const QuoteItem: React.FC<{quote: Quote}> = ({ quote }) => {
     const allDeliveryOptions: ('whatsapp' | 'email')[] = ['whatsapp', 'email'];
 
     const handleAttachmentClick = (attachment: { data: string, name: string, type: string }) => {
-        // This is for Base64 data, might need adjustment if quotes also move to Storage
-        const link = document.createElement("a");
-        link.href = attachment.data;
-        link.download = attachment.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        fetch(attachment.data)
+            .then(res => res.blob())
+            .then(blob => {
+                const blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            })
+            .catch(error => {
+                console.error("Error opening PDF:", error);
+                // Fallback to download if opening fails
+                const link = document.createElement("a");
+                link.href = attachment.data;
+                link.download = attachment.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
     };
 
     return (
