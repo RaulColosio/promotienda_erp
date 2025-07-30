@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { ClipboardListIcon, CheckCircleIcon, CircleIcon, CalendarIcon, TrashIcon, UsersIcon, EditIcon, XIcon, ChevronDownIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import RobustDatePicker from '../components/RobustDatePicker';
-import GlobalSearch from '../components/GlobalSearch';
 import TaskCreator from '../components/TaskCreator';
 import AddEditTaskModal from '../components/AddEditTaskModal';
 
@@ -247,7 +246,7 @@ const ActivitiesPage: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col h-[calc(100vh)] p-8">
+        <div className="flex flex-col h-full p-8">
             {completedTask && (
                 <FollowUpTaskModal
                     isOpen={showFollowUpModal}
@@ -267,7 +266,6 @@ const ActivitiesPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <h2 className="text-3xl font-bold text-slate-800">Tareas</h2>
                 </div>
-                <GlobalSearch />
                 <div className="bg-white shadow rounded-lg">
                     <button
                         onClick={() => setIsCreatorCollapsed(!isCreatorCollapsed)}

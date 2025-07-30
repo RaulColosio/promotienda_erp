@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useCrm, formatDate } from '../store/crmStore';
+import { useCrm } from '../store/crmStore';
 import { User, Tag, MessageTemplate, Contact, Deal, Task, ContactTag, PipelineStage } from '../types';
 import Modal from '../components/Modal';
 import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon, BellRingIcon } from '../components/Icons';
 import AddEditMessageTemplateModal from '../components/AddEditMessageTemplateModal';
-import GlobalSearch from '../components/GlobalSearch';
 import ImportContactsModal from '../components/ImportContactsModal';
 import NotificationDiagnostics from '../components/NotificationDiagnostics';
 
@@ -765,7 +764,7 @@ const DataTabContent: React.FC = () => {
     const allDeals = useMemo(() => [...deals, ...deletedDeals], [deals, deletedDeals]);
 
     const handleExportContacts = () => {
-        const headers = ["firstName", "lastName", "email", "email2", "phone", "company", "zipCode", "googleDriveFolderUrl"];
+        const headers = ["firstName", "lastName", "email", "email2", "phone", "company", "googleDriveFolderUrl"];
         let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
     
         contacts.forEach(contact => {
@@ -878,16 +877,17 @@ const DataTabContent: React.FC = () => {
                                         <li key={contact.id} className="p-3 flex justify-between items-center group">
                                             <div>
                                                 <p className="font-medium text-slate-800">{contact.firstName} {contact.lastName}</p>
-                                                {associatedDealsForContact.length > 0 &&
-                                                    <p className="text-xs text-slate-500 mt-1">
-                                                        Deals: {associatedDealsForContact.map((d, i) => (
-                                                            <React.Fragment key={d.id}>
-                                                                <Link to={`/deals/${d.id}`} className="text-blue-600 hover:underline">{d.title}</Link>
-                                                                {i < associatedDealsForContact.length - 1 && ', '}
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </p>
-                                                }
+                                                {associatedDealsForContact.length > 0 && (
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Deals: {' '}
+                                                    {associatedDealsForContact.map((d, i) => (
+                                                        <React.Fragment key={d.id}>
+                                                        <Link to={`/deals/${d.id}`} className="text-blue-600 hover:underline">{d.title}</Link>
+                                                        {i < associatedDealsForContact.length - 1 && ', '}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </p>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${daysLeft <= 7 ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}`}>
@@ -1082,10 +1082,9 @@ const SettingsPage: React.FC = () => {
     const ActiveContent = TABS[activeTab].content;
 
     return (
-        <div className="flex flex-col h-full p-8 bg-slate-100">
-            <header className="flex-shrink-0 mb-8 space-y-6">
+        <div className="flex flex-col h-full p-8">
+            <header className="flex-shrink-0 mb-8">
                 <h2 className="text-3xl font-bold text-slate-800">Settings</h2>
-                <GlobalSearch />
             </header>
             
             <div className="flex flex-col md:flex-row flex-grow gap-8 overflow-hidden">
@@ -1100,8 +1099,8 @@ const SettingsPage: React.FC = () => {
                                         onClick={() => setActiveTab(key as TabKey)}
                                         className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 text-left ${
                                             isActive
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-600 hover:bg-slate-200'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'text-slate-600 hover:bg-slate-100'
                                         }`}
                                     >
                                         <Icon className="w-5 h-5 mr-3" />

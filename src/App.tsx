@@ -16,6 +16,7 @@ import AddEditContactModal from './components/AddEditContactModal';
 import AddDealModal from './components/AddDealModal';
 import AlertModal from './components/AlertModal';
 import NotificationCenter from './components/NotificationCenter';
+import GlobalSearch from './components/GlobalSearch';
 import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, DollarSignIcon, PaintBrushIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
 
 interface SidebarProps {
@@ -127,15 +128,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   );
 };
 
+const Header: React.FC = () => {
+    return (
+        <header className="flex-shrink-0 bg-white border-b border-slate-200 p-4 flex items-center justify-center z-10">
+            <GlobalSearch />
+        </header>
+    );
+};
+
 const Layout: React.FC = () => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
     return (
         <div className="flex bg-slate-100 h-screen">
             <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(prev => !prev)} />
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <Outlet />
-            </main>
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <Header />
+                <main className="flex-1 overflow-y-auto">
+                    <Outlet />
+                </main>
+            </div>
         </div>
     );
 };
@@ -193,6 +205,7 @@ const NotificationHandler: React.FC = () => {
       // Clean up the URL to avoid re-opening the modal on refresh/navigation
       navigate(location.pathname, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, showContactDetail, navigate]);
   
   return null; // This component does not render anything visible
@@ -217,7 +230,7 @@ const NotificationController: React.FC = () => {
   useEffect(() => {
     if (loading) return;
 
-    const currentIds = new Set(notifications.map(n => n.id));
+    const currentIds = new Set<string>(notifications.map(n => n.id));
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       previousNotificationIds.current = currentIds;

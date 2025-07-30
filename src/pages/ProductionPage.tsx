@@ -2,8 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
 import { Deal, Tag } from '../types';
-import { CalendarIcon, UsersIcon } from '../components/Icons';
-import GlobalSearch from '../components/GlobalSearch';
+import { CalendarIcon } from '../components/Icons';
 
 const ProductionDealCard: React.FC<{ deal: Deal, tagColorClass: string }> = ({ deal, tagColorClass }) => {
   const { getUserById } = useCrm();
@@ -65,14 +64,13 @@ const ProductionPage: React.FC = () => {
   const { deals, tags } = useCrm();
 
   return (
-    <div className="flex flex-col h-full bg-slate-100">
-      <header className="flex-shrink-0 p-8 pb-4 space-y-6">
+    <div className="flex flex-col h-full p-8">
+      <header className="flex-shrink-0 pb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold text-slate-800">Producción</h2>
         </div>
-        <GlobalSearch />
       </header>
-      <div className="flex-1 overflow-x-auto px-8 pb-4">
+      <div className="flex-1 overflow-x-auto -mx-8 px-8">
         <div className="inline-flex space-x-4 h-full">
           {tags.map(tag => {
             const dealsForTag = deals

@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useCrm } from '../store/crmStore';
 import { Contact, ContactTag, DynamicList } from '../types';
-import { PlusIcon, EditIcon, TrashIcon, WhatsappIcon, MergeIcon, FilterIcon, ChevronLeftIcon, XIcon } from '../components/Icons';
-import GlobalSearch from '../components/GlobalSearch';
+import { PlusIcon, EditIcon, TrashIcon, WhatsappIcon, MergeIcon, FilterIcon, XIcon } from '../components/Icons';
 import MergeContactsModal from '../components/MergeContactsModal';
 import AddEditListModal from '../components/AddEditListModal';
 import BulkEditContactsModal from '../components/BulkEditContactsModal';
@@ -108,6 +107,7 @@ const ListsView: React.FC<{
             ...list,
             memberCount: contacts.filter(contact => evaluateContactAgainstList(contact, list)).length
         }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dynamicLists, contacts]);
 
     const handleDelete = (listId: string) => {
@@ -182,7 +182,7 @@ const ContactsPage: React.FC = () => {
 
     const [sortConfig, setSortConfig] = useState<{ key: keyof Contact; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
     
-    type ColumnKey = 'select' | keyof Omit<Contact, 'id' | 'createdAt' | 'zipCode' | 'googleDriveFolderUrl' | 'deletedAt' | 'contactTagIds'> | 'actions' | 'contactTags';
+    type ColumnKey = 'select' | 'firstName' | 'lastName' | 'company' | 'email' | 'email2' | 'phone' | 'actions' | 'contactTags';
 
     const initialColumns: {key: ColumnKey; label: string; sortable: boolean}[] = [
         { key: 'select', label: '', sortable: false },
@@ -225,6 +225,7 @@ const ContactsPage: React.FC = () => {
         const listFromState = dynamicLists.find(l => l.id === viewingList.id);
         if (!listFromState) return [];
         return contacts.filter(contact => evaluateContactAgainstList(contact, listFromState));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [viewingList, contacts, dynamicLists]);
     
     const displayedContacts = viewingList ? contactsInCurrentList : contacts;
@@ -286,11 +287,6 @@ const ContactsPage: React.FC = () => {
     const handleViewList = (list: DynamicList) => { setViewingList(list); setViewMode('list'); setSelectedContactIds(new Set()); };
     const handleBackToAll = () => { setViewingList(null); setSelectedContactIds(new Set()); };
     
-    const formatWhatsappLink = (phone: string) => {
-        const cleaned = phone.replace(/\D/g, '');
-        return `https://web.whatsapp.com/send?phone=${cleaned}`;
-    };
-
     const requestSort = (key: keyof Contact) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -330,8 +326,8 @@ const ContactsPage: React.FC = () => {
             <AddEditListModal isOpen={isListModalOpen} onClose={() => setIsListModalOpen(false)} listToEdit={listToEdit} />
             <BulkEditContactsModal isOpen={isBulkEditModalOpen} onClose={() => setIsBulkEditModalOpen(false)} selectedContactIds={Array.from(selectedContactIds)} />
             
-            <div className="flex flex-col h-[calc(100vh)] p-8">
-                <div className="flex-shrink-0 pb-6 space-y-6">
+            <div className="flex flex-col h-full p-8">
+                <div className="flex-shrink-0 pb-6">
                     <div className="flex justify-between items-center">
                         <h2 className="text-3xl font-bold text-slate-800">Contacts</h2>
                         <div className="flex items-center gap-4">
@@ -349,7 +345,6 @@ const ContactsPage: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                    <GlobalSearch />
                 </div>
                 
                 <div className="flex-grow overflow-auto">
@@ -362,7 +357,7 @@ const ContactsPage: React.FC = () => {
                                         <h3 className="font-semibold text-blue-800">{viewingList.name}</h3>
                                     </div>
                                     <button onClick={handleBackToAll} className="flex items-center text-sm font-semibold text-blue-600 hover:underline">
-                                        <ChevronLeftIcon className="w-4 h-4 mr-1"/> Back to All Contacts
+                                        Back to All Contacts
                                     </button>
                                 </div>
                             )}
@@ -427,7 +422,7 @@ const ContactsPage: React.FC = () => {
                                                             case 'phone': return (
                                                                 <div className="text-sm text-slate-500 flex items-center">
                                                                     {contact.phone}
-                                                                    <a href={formatWhatsappLink(contact.phone)} target="_blank" rel="noopener noreferrer" className="ml-2 text-green-500 hover:text-green-600" title="Send WhatsApp message"><WhatsappIcon className="w-5 h-5"/></a>
+                                                                    <a href={`https://web.whatsapp.com/send?phone=${contact.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-green-500 hover:text-green-600" title="Send WhatsApp message"><WhatsappIcon className="w-5 h-5"/></a>
                                                                 </div>
                                                             );
                                                             case 'contactTags':

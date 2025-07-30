@@ -13,7 +13,9 @@ const AddEditContactModal: React.FC<{
     isOpen: boolean; 
     onClose: () => void; 
     contactToEdit?: Contact | null; 
-}> = ({ isOpen, onClose, contactToEdit }) => {
+    initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
+    onSave?: (newContact: Contact) => void;
+}> = ({ isOpen, onClose, contactToEdit, initialValues, onSave }) => {
     const { contacts, addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -30,7 +32,7 @@ const AddEditContactModal: React.FC<{
     const companyInputContainerRef = useRef<HTMLDivElement>(null);
 
     const uniqueCompanies: string[] = useMemo(() => {
-        const companies = new Set(contacts.map(c => c.company).filter(Boolean));
+        const companies = new Set(contacts.map(c => c.company).filter((c): c is string => !!c));
         return Array.from(companies).sort();
     }, [contacts]);
 
@@ -54,7 +56,7 @@ const AddEditContactModal: React.FC<{
             setEmail2(contactToEdit.email2 || '');
             setCompany(contactToEdit.company);
             setGoogleDriveFolderUrl(contactToEdit.googleDriveFolderUrl || '');
-            setContactTagIds(contactToEdit.contactTagIds || []);
+            setContactTagIds((contactToEdit.contactTagIds || []).filter((id): id is string => typeof id === 'string'));
 
             const phoneStr = contactToEdit.phone || '';
             let found = false;
@@ -73,17 +75,17 @@ const AddEditContactModal: React.FC<{
             }
 
         } else {
-            setFirstName('');
-            setLastName('');
-            setEmail('');
+            setFirstName(initialValues?.firstName || '');
+            setLastName(initialValues?.lastName || '');
+            setEmail(initialValues?.email || '');
             setEmail2('');
             setCountryCode('+52');
             setPhoneNumber('');
-            setCompany('');
+            setCompany(initialValues?.company || '');
             setGoogleDriveFolderUrl('');
             setContactTagIds([]);
         }
-    }, [contactToEdit, isOpen]);
+    }, [contactToEdit, initialValues, isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -112,19 +114,22 @@ const AddEditContactModal: React.FC<{
             contactTagIds,
         };
 
-        onClose();
-
         (async () => {
             try {
                 if (contactToEdit) {
                     await updateContact({ ...contactData, id: contactToEdit.id, createdAt: contactToEdit.createdAt });
                 } else {
-                    await addContact(contactData);
+                    const newContact = await addContact(contactData);
+                    if(onSave) {
+                        onSave(newContact);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to save contact in background:", error);
             }
         })();
+        
+        onClose();
     };
 
     const handleDelete = () => {

@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
-import { Deal, Contact, PipelineStage } from '../types';
-import { PlusIcon, UsersIcon, ChevronLeftIcon, ChevronDownIcon, CalendarIcon } from '../components/Icons';
+import { Deal, PipelineStage } from '../types';
+import { PlusIcon, UsersIcon, ChevronDownIcon, CalendarIcon } from '../components/Icons';
 import ProductionTypeModal from '../components/ProductionTypeModal';
-import GlobalSearch from '../components/GlobalSearch';
 import SetDeliveryDateModal from '../components/SetDeliveryDateModal';
 
 const STAGE_COLORS: Record<string, string> = {
@@ -262,7 +261,7 @@ const DealsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100">
+    <div className="p-8 h-full flex flex-col">
        {productionModalDeal && <ProductionTypeModal 
           isOpen={!!productionModalDeal}
           onClose={() => setProductionModalDeal(null)}
@@ -286,7 +285,7 @@ const DealsPage: React.FC = () => {
           }}
           deal={dealForDeliveryDateModal}
        />}
-      <header className="flex-shrink-0 p-8 pb-4 space-y-6">
+      <div className="flex-shrink-0 pb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold text-slate-800">Deal Pipeline</h2>
           <div className="flex items-center gap-4">
@@ -314,9 +313,8 @@ const DealsPage: React.FC = () => {
               </button>
           </div>
         </div>
-        <GlobalSearch />
-      </header>
-      <div className="flex-1 overflow-x-auto px-8 pb-4">
+      </div>
+      <div className="flex-1 overflow-x-auto -mx-8 px-8">
         <div className="inline-flex space-x-4 h-full">
           {pipelineStages.map(stage => (
             <KanbanColumn
