@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useCrm } from '../store/crmStore';
 import { Contact, ContactTag } from '../types';
 import Modal from './Modal';
@@ -14,7 +14,7 @@ const AddEditContactModal: React.FC<{
     onClose: () => void; 
     contactToEdit?: Contact | null; 
 }> = ({ isOpen, onClose, contactToEdit }) => {
-    const { addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
+    const { contacts, addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -24,6 +24,27 @@ const AddEditContactModal: React.FC<{
     const [company, setCompany] = useState('');
     const [googleDriveFolderUrl, setGoogleDriveFolderUrl] = useState('');
     const [contactTagIds, setContactTagIds] = useState<string[]>([]);
+    
+    const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
+    const [isCompanyInputFocused, setIsCompanyInputFocused] = useState(false);
+    const companyInputContainerRef = useRef<HTMLDivElement>(null);
+
+    const uniqueCompanies: string[] = useMemo(() => {
+        const companies = new Set(contacts.map(c => c.company).filter(Boolean));
+        return Array.from(companies).sort();
+    }, [contacts]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (companyInputContainerRef.current && !companyInputContainerRef.current.contains(event.target as Node)) {
+                setIsCompanyInputFocused(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     useEffect(() => {
         if (contactToEdit) {
@@ -150,6 +171,31 @@ const AddEditContactModal: React.FC<{
         setContactTagIds(prev => prev.filter(id => id !== tagId));
     };
 
+    const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setCompany(value);
+        if (value) {
+            setCompanySuggestions(
+                uniqueCompanies.filter(c => c.toLowerCase().includes(value.toLowerCase()))
+            );
+        } else {
+            setCompanySuggestions([]);
+        }
+    };
+
+    const handleSelectCompany = (selectedCompany: string) => {
+        setCompany(selectedCompany);
+        setIsCompanyInputFocused(false);
+        setCompanySuggestions([]);
+
+        // Auto-fill logic
+        const contactWithUrl = contacts.find(
+            c => c.company === selectedCompany && c.googleDriveFolderUrl
+        );
+        if (contactWithUrl && !googleDriveFolderUrl) { // Only fill if the current URL is empty
+            setGoogleDriveFolderUrl(contactWithUrl.googleDriveFolderUrl!);
+        }
+    };
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={contactToEdit ? 'Edit Contact' : 'Add New Contact'}>
@@ -196,9 +242,31 @@ const AddEditContactModal: React.FC<{
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative" ref={companyInputContainerRef}>
                         <label htmlFor="company" className="block text-sm font-medium text-slate-700">Company</label>
-                        <input type="text" id="company" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                        <input 
+                            type="text" 
+                            id="company" 
+                            value={company} 
+                            onChange={handleCompanyChange} 
+                            onFocus={() => setIsCompanyInputFocused(true)}
+                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            autoComplete="off"
+                        />
+                        {isCompanyInputFocused && companySuggestions.length > 0 && company.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white shadow-lg max-h-40 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                {companySuggestions.map((suggestion, index) => (
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        onClick={() => handleSelectCompany(suggestion)}
+                                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
