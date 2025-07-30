@@ -79,7 +79,7 @@ const GlobalSearch: React.FC = () => {
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     onFocus={() => setIsFocused(true)}
-                    className="block w-full rounded-md border-transparent bg-slate-200 py-2 pl-10 pr-3 text-sm placeholder:text-slate-500 focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                    className="block w-full rounded-md border-slate-300 bg-slate-100 py-2 pl-10 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500"
                 />
             </div>
 
