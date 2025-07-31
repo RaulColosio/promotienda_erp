@@ -1,7 +1,7 @@
 
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage, Attachment } from '../types';
+import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage, Attachment, Account, FinancialCategory, Provider, PurchaseProduct, Asset, Transaction } from '../types';
 import { auth, db, storage, googleAuthProvider } from '../firebase';
 import firebase from 'firebase/compat/app';
 
@@ -162,11 +162,45 @@ interface CrmContextType {
   permanentlyDeleteDeal: (id: string) => Promise<void>;
   permanentlyDeleteTask: (id: string) => Promise<void>;
 
+  // Financials
+  accounts: Account[];
+  financialCategories: FinancialCategory[];
+  providers: Provider[];
+  purchaseProducts: PurchaseProduct[];
+  assets: Asset[];
+  transactions: Transaction[];
+
+  addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => Promise<Account>;
+  updateAccount: (account: Account) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
+
+  addFinancialCategory: (category: Omit<FinancialCategory, 'id'>) => Promise<FinancialCategory>;
+  updateFinancialCategory: (category: FinancialCategory) => Promise<void>;
+  deleteFinancialCategory: (id: string) => Promise<void>;
+
+  addProvider: (provider: Omit<Provider, 'id'>) => Promise<Provider>;
+  updateProvider: (provider: Provider) => Promise<void>;
+  deleteProvider: (id: string) => Promise<void>;
+
+  addPurchaseProduct: (product: Omit<PurchaseProduct, 'id'>) => Promise<PurchaseProduct>;
+  updatePurchaseProduct: (product: PurchaseProduct) => Promise<void>;
+  deletePurchaseProduct: (id: string) => Promise<void>;
+
+  addAsset: (asset: Omit<Asset, 'id'>, purchaseTransaction: Omit<Transaction, 'id' | 'createdAt' | 'assetId'>) => Promise<Asset>;
+  updateAsset: (asset: Asset) => Promise<void>;
+  deleteAsset: (id: string) => Promise<void>;
+
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt'>) => Promise<Transaction>;
+  updateTransaction: (transaction: Transaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  cloneTransaction: (transactionId: string) => Promise<void>;
+
   showConfirmation: (message: string, onConfirm: () => void | Promise<void>) => void;
   showContactDetail: (contactId: string) => void;
   showAddEditContact: (contact?: Contact | null) => void;
   showAddDeal: (contactId?: string) => void;
   showAlert: (title: string, message: string) => void;
+  showAddEditTransaction: (transaction?: Transaction | null) => void;
 
   isGoogleDriveConnected: boolean;
   googleApiReady: boolean;
@@ -214,13 +248,14 @@ const deleteAttachments = async (attachments: Attachment[]) => {
 };
 
 
-export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType, 'showConfirmation' | 'showContactDetail' | 'showAddEditContact' | 'showAddDeal' | 'showAlert'>> = ({ 
+export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType, 'showConfirmation' | 'showContactDetail' | 'showAddEditContact' | 'showAddDeal' | 'showAlert' | 'showAddEditTransaction'>> = ({
     children, 
     showConfirmation,
     showContactDetail,
     showAddEditContact,
     showAddDeal,
     showAlert,
+    showAddEditTransaction,
 }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,6 +278,13 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
   const [deletedContacts, setDeletedContacts] = useState<Contact[]>([]);
   const [deletedDeals, setDeletedDeals] = useState<Deal[]>([]);
   const [deletedTasks, setDeletedTasks] = useState<Task[]>([]);
+
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [financialCategories, setFinancialCategories] = useState<FinancialCategory[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [purchaseProducts, setPurchaseProducts] = useState<PurchaseProduct[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const [googleApiReady, setGoogleApiReady] = useState(false);
@@ -406,6 +448,12 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
         setDeletedContacts([]);
         setDeletedDeals([]);
         setDeletedTasks([]);
+        setAccounts([]);
+        setFinancialCategories([]);
+        setProviders([]);
+        setPurchaseProducts([]);
+        setAssets([]);
+        setTransactions([]);
         return;
     };
     
@@ -465,6 +513,14 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
           db.collection('tasks').where("deletedAt", "!=", null).onSnapshot(snapshot => setDeletedTasks(snapshot.docs.map(doc => mapDocToData<Task>(doc)))),
           db.collection('dynamicLists').orderBy('name').onSnapshot(snapshot => setDynamicLists(snapshot.docs.map(doc => mapDocToData<DynamicList>(doc)))),
           db.collection('pipelineStages').orderBy('sortIndex').onSnapshot(snapshot => setPipelineStages(snapshot.docs.map(doc => mapDocToData<PipelineStage>(doc)))),
+
+          // Financials
+          db.collection('accounts').orderBy('name').onSnapshot(snapshot => setAccounts(snapshot.docs.map(doc => mapDocToData<Account>(doc)))),
+          db.collection('financialCategories').orderBy('name').onSnapshot(snapshot => setFinancialCategories(snapshot.docs.map(doc => mapDocToData<FinancialCategory>(doc)))),
+          db.collection('providers').orderBy('name').onSnapshot(snapshot => setProviders(snapshot.docs.map(doc => mapDocToData<Provider>(doc)))),
+          db.collection('purchaseProducts').orderBy('name').onSnapshot(snapshot => setPurchaseProducts(snapshot.docs.map(doc => mapDocToData<PurchaseProduct>(doc)))),
+          db.collection('assets').orderBy('name').onSnapshot(snapshot => setAssets(snapshot.docs.map(doc => mapDocToData<Asset>(doc)))),
+          db.collection('transactions').orderBy('date', 'desc').onSnapshot(snapshot => setTransactions(snapshot.docs.map(doc => mapDocToData<Transaction>(doc)))),
         ];
         setLoading(false);
     };
@@ -1120,9 +1176,90 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
     await reEvaluateAllContactsForLists(updatedLists);
   };
 
+  // --- Financial Management CRUD ---
+  const addAccount = async (account: Omit<Account, 'id' | 'createdAt'>): Promise<Account> => {
+    const newAccountRef = await add("accounts", { ...account, createdAt: new Date().toISOString() });
+    const newAccountSnap = await newAccountRef.get();
+    return mapDocToData<Account>(newAccountSnap);
+  };
+  const updateAccount = async (account: Account) => await update("accounts", account.id, account);
+  const deleteAccount = async (id: string) => await remove("accounts", id);
+
+  const addFinancialCategory = async (category: Omit<FinancialCategory, 'id'>): Promise<FinancialCategory> => {
+    const newCategoryRef = await add("financialCategories", category);
+    const newCategorySnap = await newCategoryRef.get();
+    return mapDocToData<FinancialCategory>(newCategorySnap);
+  };
+  const updateFinancialCategory = async (category: FinancialCategory) => await update("financialCategories", category.id, category);
+  const deleteFinancialCategory = async (id: string) => await remove("financialCategories", id);
+
+  const addProvider = async (provider: Omit<Provider, 'id'>): Promise<Provider> => {
+    const newProviderRef = await add("providers", provider);
+    const newProviderSnap = await newProviderRef.get();
+    return mapDocToData<Provider>(newProviderSnap);
+  };
+  const updateProvider = async (provider: Provider) => await update("providers", provider.id, provider);
+  const deleteProvider = async (id: string) => await remove("providers", id);
+
+  const addPurchaseProduct = async (product: Omit<PurchaseProduct, 'id'>): Promise<PurchaseProduct> => {
+    const newProductRef = await add("purchaseProducts", product);
+    const newProductSnap = await newProductRef.get();
+    return mapDocToData<PurchaseProduct>(newProductSnap);
+  };
+  const updatePurchaseProduct = async (product: PurchaseProduct) => await update("purchaseProducts", product.id, product);
+  const deletePurchaseProduct = async (id: string) => await remove("purchaseProducts", id);
+
+  const addAsset = async (asset: Omit<Asset, 'id'>, purchaseTransaction: Omit<Transaction, 'id' | 'createdAt' | 'assetId'>): Promise<Asset> => {
+    const newAssetRef = await add("assets", asset);
+    const newAsset = { ...asset, id: newAssetRef.id };
+
+    await addTransaction({
+      ...purchaseTransaction,
+      assetId: newAsset.id,
+    });
+
+    const newAssetSnap = await newAssetRef.get();
+    return mapDocToData<Asset>(newAssetSnap);
+  };
+  const updateAsset = async (asset: Asset) => await update("assets", asset.id, asset);
+  const deleteAsset = async (id: string) => {
+    // Also delete associated transaction? For now, we'll just disassociate.
+    const associatedTxQuery = await db.collection('transactions').where('assetId', '==', id).get();
+    if (!associatedTxQuery.empty) {
+        const batch = db.batch();
+        associatedTxQuery.docs.forEach(doc => {
+            batch.update(doc.ref, { assetId: firebase.firestore.FieldValue.delete() });
+        });
+        await batch.commit();
+    }
+    await remove("assets", id);
+  };
+
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> => {
+    const newTransactionRef = await add("transactions", { ...transaction, createdAt: new Date().toISOString() });
+    const newTransactionSnap = await newTransactionRef.get();
+    return mapDocToData<Transaction>(newTransactionSnap);
+  };
+  const updateTransaction = async (transaction: Transaction) => await update("transactions", transaction.id, transaction);
+  const deleteTransaction = async (id: string) => await remove("transactions", id);
+  const cloneTransaction = async (transactionId: string) => {
+    const originalTx = transactions.find(t => t.id === transactionId);
+    if (!originalTx) {
+        showAlert('Error', 'Transaction not found.');
+        return;
+    }
+    const { id, createdAt, date, ...rest } = originalTx;
+    const newTxData = {
+        ...rest,
+        date: new Date().toISOString().split('T')[0], // Set date to today
+    };
+    await addTransaction(newTxData);
+  };
+
   const contextValue: CrmContextType = {
     currentUser, loading, login, logout,
     contacts, deals, tasks, notes, contactNotes, users, tags, contactTags, messageTemplates, quotes, notifications, sentNotifications, dynamicLists, pipelineStages,
+    accounts, financialCategories, providers, purchaseProducts, assets, transactions,
     getContactById: (id) => contacts.find(c => c.id === id) || deletedContacts.find(c => c.id === id),
     getDealById: (id) => deals.find(d => d.id === id) || deletedDeals.find(d => d.id === id),
     getStageById: (id) => pipelineStages.find(s => s.id === id),
@@ -1148,8 +1285,14 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
     permanentlyDeleteContact: (id) => remove('contacts', id),
     permanentlyDeleteDeal: (id) => remove('deals', id),
     permanentlyDeleteTask: (id) => remove('tasks', id),
-    showConfirmation, showContactDetail, showAddEditContact, showAddDeal, showAlert,
+    showConfirmation, showContactDetail, showAddEditContact, showAddDeal, showAlert, showAddEditTransaction,
     isGoogleDriveConnected, googleApiReady, connectToGoogleDrive, disconnectFromGoogleDrive, pickGoogleDriveFolder,
+    addAccount, updateAccount, deleteAccount,
+    addFinancialCategory, updateFinancialCategory, deleteFinancialCategory,
+    addProvider, updateProvider, deleteProvider,
+    addPurchaseProduct, updatePurchaseProduct, deletePurchaseProduct,
+    addAsset, updateAsset, deleteAsset,
+    addTransaction, updateTransaction, deleteTransaction, cloneTransaction,
   };
 
   return (

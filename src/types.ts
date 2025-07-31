@@ -145,3 +145,54 @@ export interface BulkContactUpdatePayload {
   addTagIds: string[];
   removeTagIds: string[];
 }
+
+// --- Financial Management ---
+
+export interface Account {
+  id: string;
+  name: string;
+  type: 'debit' | 'credit' | 'cash';
+  initialBalance: number;
+  createdAt: string;
+}
+
+export interface FinancialCategory {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  // Future fields: rfc, address, etc.
+}
+
+export interface PurchaseProduct {
+    id: string;
+    name:string;
+}
+
+export interface Asset {
+    id: string;
+    name: string;
+    acquisitionDate: string; // YYYY-MM-DD
+    value: number;
+    description: string;
+    // The transaction for the purchase is linked via the Transaction's assetId
+}
+
+export interface Transaction {
+  id: string;
+  accountId: string;
+  type: 'income' | 'expense';
+  amount: number;
+  date: string; // YYYY-MM-DD
+  description: string;
+  categoryId: string;
+  providerId?: string;
+  purchaseProductId?: string;
+  assetId?: string;
+  invoiceUrl?: string;
+  createdAt: string;
+}

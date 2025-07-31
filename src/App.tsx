@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CrmProvider, useCrm } from './store/crmStore';
-import { Contact } from './types';
+import { Contact, Transaction } from './types';
 import DealsPage from './pages/DealsPage';
 import ContactsPage from './pages/ContactsPage';
 import DealDetailPage from './pages/DealDetailPage';
 import ActivitiesPage from './pages/ActivitiesPage';
 import SettingsPage from './pages/SettingsPage';
 import ProductionPage from './pages/ProductionPage';
+import FinancialsPage from './pages/FinancialsPage';
 import LoginPage from './pages/LoginPage';
 import MessagesPage from './pages/MessagesPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import ContactDetailModal from './components/ContactDetailModal';
 import AddEditContactModal from './components/AddEditContactModal';
 import AddDealModal from './components/AddDealModal';
+import AddTransactionModal from './components/AddTransactionModal';
 import AlertModal from './components/AlertModal';
 import NotificationCenter from './components/NotificationCenter';
 import GlobalSearch from './components/GlobalSearch';
-import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, DollarSignIcon, PaintBrushIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
+import { LayersIcon, UsersIcon, ClipboardListIcon, SettingsIcon, DollarSignIcon, PaintBrushIcon, TrendingUpIcon, ChevronLeftIcon, ChevronRightIcon, LogOutIcon } from './components/Icons';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -58,6 +60,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         <NavLink to="/production" className={navLinkClasses} title="Producción">
           <PaintBrushIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
           {!isCollapsed && <span className="truncate">Producción</span>}
+        </NavLink>
+        <NavLink to="/financials" className={navLinkClasses} title="Finanzas">
+            <TrendingUpIcon className={`w-5 h-5 shrink-0 ${!isCollapsed && 'mr-3'}`} />
+            {!isCollapsed && <span className="truncate">Finanzas</span>}
         </NavLink>
         
         <NavLink to="/activities" className={navLinkClasses} title="Tareas">
@@ -182,6 +188,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/contacts" element={<ContactsPage />} />
                     <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/production" element={<ProductionPage />} />
+                    <Route path="/financials" element={<FinancialsPage />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                 </Route>
@@ -278,6 +285,7 @@ const App: React.FC = () => {
   }>({ isOpen: false });
   const [addDeal, setAddDeal] = useState<{ isOpen: boolean, contactId?: string }>({ isOpen: false });
   const [alert, setAlert] = useState<{ isOpen: boolean; title: string; message: string } | null>(null);
+  const [addEditTransaction, setAddEditTransaction] = useState<{ isOpen: boolean; transactionToEdit?: Transaction | null }>({ isOpen: false });
 
   const showConfirmation = (message: string, onConfirm: () => void | Promise<void>) => setConfirmation({ isOpen: true, message, onConfirm });
   const showContactDetail = (contactId: string) => setContactDetail({ isOpen: true, contactId });
@@ -295,6 +303,7 @@ const App: React.FC = () => {
   });
   const showAddDeal = (contactId?: string) => setAddDeal({ isOpen: true, contactId });
   const showAlert = (title: string, message: string) => setAlert({ isOpen: true, title, message });
+  const showAddEditTransaction = (transaction?: Transaction | null) => setAddEditTransaction({ isOpen: true, transactionToEdit: transaction });
 
   const handleCloseConfirmation = () => setConfirmation(null);
   const handleConfirm = async () => {
@@ -308,6 +317,7 @@ const App: React.FC = () => {
   const handleCloseAddEditContact = () => setAddEditContact({ isOpen: false });
   const handleCloseAddDeal = () => setAddDeal({ isOpen: false });
   const handleCloseAlert = () => setAlert(null);
+  const handleCloseAddEditTransaction = () => setAddEditTransaction({ isOpen: false });
   
   return (
     <HashRouter>
@@ -317,6 +327,7 @@ const App: React.FC = () => {
         showAddEditContact={showAddEditContact}
         showAddDeal={showAddDeal}
         showAlert={showAlert}
+        showAddEditTransaction={showAddEditTransaction}
       >
         <NotificationHandler />
         <NotificationController />
@@ -338,6 +349,11 @@ const App: React.FC = () => {
           contactToEdit={addEditContact.contactToEdit}
           initialValues={addEditContact.initialValues}
           onSave={addEditContact.onSave}
+        />
+        <AddTransactionModal
+            isOpen={addEditTransaction.isOpen}
+            onClose={handleCloseAddEditTransaction}
+            transactionToEdit={addEditTransaction.transactionToEdit}
         />
         <ConfirmationModal
           isOpen={confirmation?.isOpen || false}
