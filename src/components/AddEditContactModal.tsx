@@ -16,7 +16,7 @@ const AddEditContactModal: React.FC<{
     initialValues?: Partial<Pick<Contact, 'firstName' | 'lastName' | 'email' | 'company'>>;
     onSave?: (newContact: Contact) => void;
 }> = ({ isOpen, onClose, contactToEdit, initialValues, onSave }) => {
-    const { contacts, addContact, updateContact, deleteContact, showConfirmation, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
+    const { contacts, addContact, updateContact, deleteContact, showConfirmation, showAddDeal, pickGoogleDriveFolder, isGoogleDriveConnected, googleApiReady, contactTags } = useCrm();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -118,18 +118,23 @@ const AddEditContactModal: React.FC<{
             try {
                 if (contactToEdit) {
                     await updateContact({ ...contactData, id: contactToEdit.id, createdAt: contactToEdit.createdAt });
+                    onClose();
                 } else {
                     const newContact = await addContact(contactData);
+                    onClose();
                     if(onSave) {
                         onSave(newContact);
                     }
+                    showConfirmation(
+                        "Cliente guardado. ¿Quieres crear un trato para este cliente?",
+                        () => showAddDeal(newContact.id)
+                    );
                 }
             } catch (error) {
                 console.error("Failed to save contact in background:", error);
+                onClose();
             }
         })();
-        
-        onClose();
     };
 
     const handleDelete = () => {
