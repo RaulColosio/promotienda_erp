@@ -285,28 +285,9 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
   }, []);
 
   const connectToGoogleDrive = async () => {
-      try {
-          const result = await auth.signInWithPopup(googleAuthProvider);
-          // After signInWithPopup, onAuthStateChanged will handle the user state.
-          // We can get the token from the credential if needed, but let's rely on Firebase's session management.
-          const credential = result.credential as firebase.auth.OAuthCredential;
-          if (credential?.accessToken) {
-              sessionStorage.setItem('googleOauthToken', credential.accessToken);
-          }
-          setIsGoogleDriveConnected(true);
-          localStorage.setItem('googleDriveConnected', 'true');
-      } catch (error: any) {
-          console.error("Google Drive connection error:", error);
-          // The 'auth/credential-already-in-use' error can be handled more gracefully.
-          if (error.code === 'auth/credential-already-in-use') {
-              alert('This Google account is already associated with another user.');
-          } else {
-              alert("Could not connect to Google Drive. Please check popup blockers and try again.");
-          }
-          setIsGoogleDriveConnected(false);
-          localStorage.removeItem('googleDriveConnected');
-          sessionStorage.removeItem('googleOauthToken');
-      }
+      // Temporarily disabled
+      console.warn("Google Drive connection is temporarily disabled.");
+      return Promise.resolve();
   };
 
   const disconnectFromGoogleDrive = async () => {

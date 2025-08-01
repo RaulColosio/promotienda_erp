@@ -113,8 +113,7 @@ const CreateContactForm: React.FC<{
                     <input type="text" id="company-new" value={company} onChange={e => setCompany(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm" />
                 </div>
                 <div>
-                    <label htmlFor="googleDriveUrl-new" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
-                    <input type="url" id="googleDriveUrl-new" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm" />
+                    {/* Google Drive URL field temporarily disabled */}
                 </div>
                 <div className="flex justify-end pt-2 gap-2">
                     <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200">Cancel</button>

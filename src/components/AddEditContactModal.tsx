@@ -284,20 +284,7 @@ const AddEditContactModal: React.FC<{
                         )}
                     </div>
                     <div>
-                        <label htmlFor="googleDriveUrl" className="block text-sm font-medium text-slate-700">Google Drive Folder URL</label>
-                        <div className="mt-1 flex gap-2">
-                            <input type="url" id="googleDriveUrl" value={googleDriveFolderUrl} onChange={e => setGoogleDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/..." className="flex-grow block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                            <button
-                                type="button"
-                                onClick={handleSelectFolder}
-                                disabled={!isGoogleDriveConnected || !googleApiReady}
-                                title={!isGoogleDriveConnected ? "Connect to Google Drive in Settings first" : "Select Folder from Google Drive"}
-                                className="flex-shrink-0 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                            >
-                                <LinkIcon className="w-5 h-5" />
-                            </button>
-                        </div>
-                        {!isGoogleDriveConnected && <p className="text-xs text-slate-500 mt-1">Connect to Google Drive in Settings to enable folder selection.</p>}
+                        {/* Google Drive URL field temporarily disabled */}
                     </div>
                 </div>
                 

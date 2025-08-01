@@ -1071,7 +1071,6 @@ const TABS = {
     AUTOMATIONS: { id: 'automations', label: 'Automatizaciones', icon: ZapIcon, content: AutomationsTabContent },
     LOGICS: { id: 'logics', label: 'Lógicas del Sistema', icon: LightbulbIcon, content: LogicsTabContent },
     DATA: { id: 'data', label: 'Data & Archive', icon: ArchiveIcon, content: DataTabContent },
-    INTEGRATIONS: { id: 'integrations', label: 'Integrations', icon: LinkIcon, content: IntegrationsTabContent },
     DIAGNOSTICS: {id: 'diagnostics', label: 'Diagnostics', icon: TerminalIcon, content: NotificationDiagnostics }
 };
 
