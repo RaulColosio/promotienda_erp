@@ -83,9 +83,14 @@ const AddEditContactModal: React.FC<{
             setPhoneNumber('');
             setCompany(initialValues?.company || '');
             setGoogleDriveFolderUrl('');
-            setContactTagIds([]);
+            const leadTag = contactTags.find(t => t.name.toLowerCase() === 'lead');
+            if (leadTag) {
+                setContactTagIds([leadTag.id]);
+            } else {
+                setContactTagIds([]);
+            }
         }
-    }, [contactToEdit, initialValues, isOpen]);
+    }, [contactToEdit, initialValues, isOpen, contactTags]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
