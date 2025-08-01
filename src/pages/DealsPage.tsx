@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrm, formatDate } from '../store/crmStore';
 import { Deal, PipelineStage } from '../types';
-import { PlusIcon, UsersIcon, ChevronDownIcon, CalendarIcon } from '../components/Icons';
+import { PlusIcon, UsersIcon, ChevronDownIcon, CalendarIcon, ClipboardListIcon } from '../components/Icons';
 import ProductionTypeModal from '../components/ProductionTypeModal';
 import SetDeliveryDateModal from '../components/SetDeliveryDateModal';
+import DealTasksModal from '../components/DealTasksModal';
 
 const STAGE_COLORS: Record<string, string> = {
   'Nuevos': 'border-t-slate-400',
@@ -23,28 +24,40 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 const DealCard: React.FC<{
-  deal: Deal,
-  stageName: string,
+  deal: Deal;
+  stageName: string;
   isReorderEnabled: boolean;
   onReorder: (draggedId: string, targetId: string) => void;
-}> = ({ deal, stageName, isReorderEnabled, onReorder }) => {
-  const { getContactById, getUserById } = useCrm();
+  onTasksClick: (deal: Deal) => void;
+}> = ({ deal, stageName, isReorderEnabled, onReorder, onTasksClick }) => {
+  const { getContactById, getUserById, getTasksForDeal } = useCrm();
   const navigate = useNavigate();
   const [isOver, setIsOver] = useState(false);
   const primaryContact = deal.contactIds.length > 0 ? getContactById(deal.contactIds[0]) : undefined;
   const assignedUser = deal.assignedUserId ? getUserById(deal.assignedUserId) : undefined;
-  
+  const tasks = getTasksForDeal(deal.id);
+  const pendingTaskCount = tasks.filter(t => !t.completed).length;
+
   const today = new Date();
-  today.setHours(0,0,0,0);
+  today.setHours(0, 0, 0, 0);
   const deliveryDate = deal.deliveryDate ? new Date(deal.deliveryDate + 'T00:00:00') : null;
   const isOverdue = deliveryDate && deliveryDate < today && stageName !== 'Ganado' && stageName !== 'Perdido';
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('dealId', deal.id);
   };
-  
-  const handleClick = () => {
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent navigation if the click was on the tasks icon or its parent button
+    if ((e.target as HTMLElement).closest('.tasks-icon-button')) {
+      return;
+    }
     navigate(`/deals/${deal.id}`);
+  };
+
+  const handleTasksClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click event
+    onTasksClick(deal);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -76,9 +89,23 @@ const DealCard: React.FC<{
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`bg-white p-4 rounded-lg shadow-sm mb-3 cursor-pointer active:cursor-grabbing border-t-4 ${STAGE_COLORS[stageName] || 'border-t-gray-400'} ${isOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+      className={`relative bg-white p-4 rounded-lg shadow-sm mb-3 cursor-pointer active:cursor-grabbing border-t-4 ${STAGE_COLORS[stageName] || 'border-t-gray-400'} ${isOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
     >
-      <h4 className={`font-bold ${stageName === 'Perdido' ? 'text-slate-400' : 'text-slate-800'}`}>{deal.title}</h4>
+      <div className="flex justify-between items-start">
+        <h4 className={`font-bold pr-8 ${stageName === 'Perdido' ? 'text-slate-400' : 'text-slate-800'}`}>{deal.title}</h4>
+        <button
+          onClick={handleTasksClick}
+          className="tasks-icon-button absolute top-3 right-3 text-slate-400 hover:text-blue-600 p-1 rounded-full"
+          aria-label="View tasks"
+        >
+          <ClipboardListIcon className="w-5 h-5" />
+          {pendingTaskCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs">
+              {pendingTaskCount}
+            </span>
+          )}
+        </button>
+      </div>
       <div className="mt-2 space-y-2">
         {primaryContact && (
             <p className={`text-sm flex items-center ${stageName === 'Perdido' ? 'text-slate-500' : 'text-slate-600'}`}>
@@ -114,7 +141,8 @@ const KanbanColumn: React.FC<{
     onToggleCollapse: () => void;
     isReorderEnabled: boolean;
     onReorder: (draggedId: string, targetId: string) => void;
-}> = ({ stage, deals, onDropDeal, isCollapsed, onToggleCollapse, isReorderEnabled, onReorder }) => {
+    onTasksClick: (deal: Deal) => void;
+}> = ({ stage, deals, onDropDeal, isCollapsed, onToggleCollapse, isReorderEnabled, onReorder, onTasksClick }) => {
   const [isOver, setIsOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -182,6 +210,7 @@ const KanbanColumn: React.FC<{
                     stageName={stage.name}
                     isReorderEnabled={isReorderEnabled}
                     onReorder={onReorder}
+                    onTasksClick={onTasksClick}
                 />
               ))}
             </div>
@@ -200,9 +229,10 @@ const DealsPage: React.FC = () => {
   const [dealIdForDeliveryDateModal, setDealIdForDeliveryDateModal] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('createdAt-desc');
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
-  
+  const [tasksModalDeal, setTasksModalDeal] = useState<Deal | null>(null);
+
   const dealForDeliveryDateModal = dealIdForDeliveryDateModal ? getDealById(dealIdForDeliveryDateModal) : null;
-  
+
   useEffect(() => {
     // Initialize collapsed stages once pipeline stages are loaded
     if (pipelineStages.length > 0) {
@@ -260,8 +290,19 @@ const DealsPage: React.FC = () => {
     });
   };
 
+  const handleTasksClick = (deal: Deal) => {
+    setTasksModalDeal(deal);
+  };
+
   return (
     <div className="p-8 h-full flex flex-col">
+       {tasksModalDeal && (
+        <DealTasksModal
+          isOpen={!!tasksModalDeal}
+          onClose={() => setTasksModalDeal(null)}
+          deal={tasksModalDeal}
+        />
+      )}
        {productionModalDeal && <ProductionTypeModal 
           isOpen={!!productionModalDeal}
           onClose={() => setProductionModalDeal(null)}
@@ -326,6 +367,7 @@ const DealsPage: React.FC = () => {
               onToggleCollapse={() => toggleCollapse(stage.id)}
               isReorderEnabled={sortBy === 'manual'}
               onReorder={reorderDeal}
+              onTasksClick={handleTasksClick}
             />
           ))}
         </div>
