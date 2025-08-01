@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCrm } from '../store/crmStore';
 import { User, Tag, MessageTemplate, Contact, Deal, Task, ContactTag, PipelineStage } from '../types';
 import Modal from '../components/Modal';
-import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, LinkIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon, BellRingIcon } from '../components/Icons';
+import { PlusIcon, EditIcon, TrashIcon, UsersIcon, TagIcon, MessageSquareIcon, ArchiveIcon, RefreshCwIcon, DownloadIcon, UploadIcon, CheckIcon, GripVerticalIcon, TerminalIcon, ZapIcon, BookmarkIcon, LightbulbIcon, TrendingUpIcon, XIcon, BellRingIcon } from '../components/Icons';
 import AddEditMessageTemplateModal from '../components/AddEditMessageTemplateModal';
 import ImportContactsModal from '../components/ImportContactsModal';
 import NotificationDiagnostics from '../components/NotificationDiagnostics';
@@ -939,66 +939,6 @@ const DataTabContent: React.FC = () => {
     );
 };
 
-// --- Integrations Tab ---
-const IntegrationsTabContent: React.FC = () => {
-    const { 
-      isGoogleDriveConnected, 
-      connectToGoogleDrive, 
-      disconnectFromGoogleDrive, 
-      googleApiReady 
-    } = useCrm();
-    const [isConnecting, setIsConnecting] = useState(false);
-
-    const handleConnect = async () => {
-        setIsConnecting(true);
-        await connectToGoogleDrive();
-        setIsConnecting(false);
-    };
-
-    return (
-        <div>
-            <div className="bg-slate-50 p-6 rounded-lg border">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h4 className="font-semibold text-slate-700 mb-2">Google Drive</h4>
-                        <p className="text-sm text-slate-500 mb-4">Connect your Google account to select folders for your contacts and deals.</p>
-                    </div>
-                     <img src="https://upload.wikimedia.org/wikipedia/commons/d/da/Google_Drive_logo.png" alt="Google Drive" className="w-12 h-12"/>
-                </div>
-                
-                {isGoogleDriveConnected ? (
-                    <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <CheckIcon className="w-5 h-5 text-green-600" />
-                            <p className="text-sm font-semibold text-green-800">Connected to Google Drive</p>
-                        </div>
-                        <button
-                             onClick={disconnectFromGoogleDrive}
-                             className="text-sm font-medium text-slate-600 hover:text-red-600"
-                        >
-                            Disconnect
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={handleConnect}
-                        disabled={isConnecting || !googleApiReady}
-                        className="flex items-center justify-center bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg shadow-sm hover:bg-slate-100 transition-colors disabled:bg-slate-100 disabled:cursor-wait"
-                        title={!googleApiReady ? "Google API is loading..." : "Connect to Google Drive"}
-                    >
-                        {isConnecting ? (
-                             <RefreshCwIcon className="w-5 h-5 mr-2 animate-spin" />
-                        ) : (
-                             <img src="https://upload.wikimedia.org/wikipedia/commons/d/da/Google_Drive_logo.png" alt="Google Drive" className="w-5 h-5 mr-2"/>
-                        )}
-                        {isConnecting ? 'Connecting...' : 'Connect to Google Drive'}
-                    </button>
-                )}
-            </div>
-        </div>
-    );
-};
-
 // --- Notifications Tab ---
 const NotificationsTabContent: React.FC = () => {
   const [permission, setPermission] = useState(Notification.permission);
@@ -1071,7 +1011,6 @@ const TABS = {
     AUTOMATIONS: { id: 'automations', label: 'Automatizaciones', icon: ZapIcon, content: AutomationsTabContent },
     LOGICS: { id: 'logics', label: 'Lógicas del Sistema', icon: LightbulbIcon, content: LogicsTabContent },
     DATA: { id: 'data', label: 'Data & Archive', icon: ArchiveIcon, content: DataTabContent },
-    INTEGRATIONS: { id: 'integrations', label: 'Integrations', icon: LinkIcon, content: IntegrationsTabContent },
     DIAGNOSTICS: {id: 'diagnostics', label: 'Diagnostics', icon: TerminalIcon, content: NotificationDiagnostics }
 };
 

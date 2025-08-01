@@ -10,20 +10,6 @@ interface CloudSectionProps {
     deal: Deal;
 }
 
-const formatGdriveUrl = (url: string): string => {
-    try {
-        const decodedUrl = decodeURIComponent(url);
-        const parts = decodedUrl.split('/Mi unidad/');
-        if (parts.length > 1) {
-            return parts[1].replace(/\//g, ' / ');
-        }
-        return url; // Fallback to original URL if pattern not found
-    } catch (e) {
-        // In case of a malformed URI
-        return url;
-    }
-};
-
 const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
     const { getContactById } = useCrm();
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -42,11 +28,6 @@ const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
         return null;
     }, [deal, primaryContact]);
 
-    const displayPath = useMemo(() => {
-        if (!effectiveUrl) return '';
-        return formatGdriveUrl(effectiveUrl);
-    }, [effectiveUrl]);
-
     return (
         <>
             {isManageModalOpen && <ManageCloudLinkModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} deal={deal} />}
@@ -55,7 +36,7 @@ const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-slate-800 flex items-center">
                         <CloudIcon className="w-5 h-5 mr-2 text-slate-500" />
-                        Nube de contacto
+                        Enlace de Nube
                     </h3>
                     <button onClick={() => setIsManageModalOpen(true)} className="text-blue-600 hover:text-blue-800 text-sm font-semibold">
                         Manage Link
@@ -71,13 +52,13 @@ const CloudSection: React.FC<CloudSectionProps> = ({ deal }) => {
                             className="flex items-center gap-2 text-blue-600 font-medium break-all hover:underline"
                         >
                             <LinkIcon className="w-4 h-4 flex-shrink-0" />
-                            <span>{displayPath}</span>
+                            <span>{effectiveUrl}</span>
                         </a>
                         {urlSource && <p className="text-xs text-slate-400">Source: {urlSource}</p>}
                     </div>
                 ) : (
                      <div className="text-center py-4">
-                        <p className="text-sm text-slate-500">No Google Drive folder linked.</p>
+                        <p className="text-sm text-slate-500">No cloud folder linked.</p>
                         <button onClick={() => setIsManageModalOpen(true)} className="mt-2 text-sm font-semibold text-blue-600 hover:underline">
                             Add a link for this deal
                         </button>

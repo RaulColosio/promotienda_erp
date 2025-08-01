@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { Contact, Deal, Task, Note, User, Tag, MessageTemplate, Quote, ContactNote, Notification, ContactTag, DynamicList, BulkContactUpdatePayload, PipelineStage, Attachment } from '../types';
-import { auth, db, storage, googleAuthProvider } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import firebase from 'firebase/compat/app';
 
 const permanentUser: User = {
@@ -167,12 +167,6 @@ interface CrmContextType {
   showAddEditContact: (contact?: Contact | null) => void;
   showAddDeal: (contactId?: string) => void;
   showAlert: (title: string, message: string) => void;
-
-  isGoogleDriveConnected: boolean;
-  googleApiReady: boolean;
-  connectToGoogleDrive: () => Promise<void>;
-  disconnectFromGoogleDrive: () => Promise<void>;
-  pickGoogleDriveFolder: () => Promise<{ id: string; url: string; name: string; } | null>;
 }
 
 const CrmContext = createContext<CrmContextType | undefined>(undefined);
@@ -244,9 +238,6 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
   const [deletedDeals, setDeletedDeals] = useState<Deal[]>([]);
   const [deletedTasks, setDeletedTasks] = useState<Task[]>([]);
 
-  const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
-  const [googleApiReady, setGoogleApiReady] = useState(false);
-
   // --- ONE-TIME MIGRATION ---
   const initializeDefaultPipelineStages = async () => {
     const pipelineRef = db.collection('pipelineStages');
@@ -271,83 +262,8 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
 
 
   useEffect(() => {
-      if ((window as any).gapi) {
-          (window as any).gapi.load('picker', () => setGoogleApiReady(true));
-      }
       initializeDefaultPipelineStages();
   }, []);
-
-  useEffect(() => {
-    const storedStatus = localStorage.getItem('googleDriveConnected');
-    if (storedStatus === 'true') {
-      setIsGoogleDriveConnected(true);
-    }
-  }, []);
-
-  const connectToGoogleDrive = async () => {
-      try {
-          const result = await auth.signInWithPopup(googleAuthProvider);
-          const credential = result.credential as firebase.auth.OAuthCredential;
-          if (credential?.accessToken) {
-              // Store token to use with Google Picker API
-              sessionStorage.setItem('googleOauthToken', credential.accessToken);
-              setIsGoogleDriveConnected(true);
-              localStorage.setItem('googleDriveConnected', 'true');
-          } else {
-               throw new Error("No access token received from Google.");
-          }
-      } catch (error) {
-          console.error("Google Drive connection error:", error);
-          alert("Could not connect to Google Drive. Please check popup blockers and try again.");
-          setIsGoogleDriveConnected(false);
-          localStorage.removeItem('googleDriveConnected');
-          sessionStorage.removeItem('googleOauthToken');
-      }
-  };
-
-  const disconnectFromGoogleDrive = async () => {
-      // For simplicity, we just clear our state. A full implementation
-      // might involve revoking tokens or unlinking from Firebase user.
-      setIsGoogleDriveConnected(false);
-      localStorage.removeItem('googleDriveConnected');
-      sessionStorage.removeItem('googleOauthToken');
-  };
-
-  const pickGoogleDriveFolder = async (): Promise<{id: string, url: string, name: string} | null> => {
-      return new Promise((resolve, reject) => {
-          const oauthToken = sessionStorage.getItem('googleOauthToken');
-          const developerKey = (window as any).process?.env?.GOOGLE_API_KEY; // Placeholder
-          const clientId = (window as any).process?.env?.GOOGLE_CLIENT_ID; // Placeholder
-
-          if (!oauthToken || !googleApiReady) {
-              return reject(new Error("Google Drive integration is not ready or user is not authenticated."));
-          }
-          
-          const docsView = new (window as any).google.picker.DocsView((window as any).google.picker.ViewId.FOLDERS)
-              .setIncludeFolders(true)
-              .setSelectFolderEnabled(true);
-
-          const picker = new (window as any).google.picker.PickerBuilder()
-              // .setAppId(clientId) // AppID is your project number
-              .setOAuthToken(oauthToken)
-              // .setDeveloperKey(developerKey)
-              .addView(docsView)
-              .setCallback((data: any) => {
-                  if (data.action === (window as any).google.picker.Action.PICKED) {
-                      const doc = data.docs[0];
-                      resolve({
-                          id: doc.id,
-                          url: doc.url,
-                          name: doc.name,
-                      });
-                  } else if (data.action === (window as any).google.picker.Action.CANCEL) {
-                      resolve(null);
-                  }
-              })
-              .build();
-          picker.setVisible(true);
-      });
-  };
 
   useEffect(() => {
     setLoading(true);
@@ -1149,7 +1065,6 @@ export const CrmProvider: React.FC<{ children: ReactNode } & Pick<CrmContextType
     permanentlyDeleteDeal: (id) => remove('deals', id),
     permanentlyDeleteTask: (id) => remove('tasks', id),
     showConfirmation, showContactDetail, showAddEditContact, showAddDeal, showAlert,
-    isGoogleDriveConnected, googleApiReady, connectToGoogleDrive, disconnectFromGoogleDrive, pickGoogleDriveFolder,
   };
 
   return (
